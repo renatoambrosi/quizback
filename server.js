@@ -1,4 +1,31 @@
-// server.js - QuizBack Backend
+// CORS Fix - Versão Mais Simples e Permissiva
+// Adicione ANTES de qualquer rota no seu server.js
+
+// Middleware CORS super permissivo
+app.use((req, res, next) => {
+    // Permitir qualquer origem
+    res.header('Access-Control-Allow-Origin', '*');
+    
+    // Permitir todos os métodos
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    
+    // Permitir todos os headers
+    res.header('Access-Control-Allow-Headers', '*');
+    
+    // Se for OPTIONS, responder OK
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
+// OU se preferir, remova o app.use(cors()) e use apenas isso:
+app.use(cors({
+    origin: '*',
+    methods: '*',
+    allowedHeaders: '*'
+}));// server.js - QuizBack Backend
 const express = require('express');
 const cors = require('cors');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
