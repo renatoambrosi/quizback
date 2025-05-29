@@ -1,59 +1,15 @@
-// CORS Fix - Versão Mais Simples e Permissiva
-// Adicione ANTES de qualquer rota no seu server.js
-
-// Middleware CORS super permissivo
-app.use((req, res, next) => {
-    // Permitir qualquer origem
-    res.header('Access-Control-Allow-Origin', '*');
-    
-    // Permitir todos os métodos
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    
-    // Permitir todos os headers
-    res.header('Access-Control-Allow-Headers', '*');
-    
-    // Se for OPTIONS, responder OK
-    if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-    } else {
-        next();
-    }
-});
-
-// OU se preferir, remova o app.use(cors()) e use apenas isso:
-app.use(cors({
-    origin: '*',
-    methods: '*',
-    allowedHeaders: '*'
-}));// server.js - QuizBack Backend
+// server.js - Versão Simplificada para Railway
 const express = require('express');
-const cors = require('cors');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware CORS - Configuração mais permissiva
-app.use(cors({
-    origin: [
-        'https://quizfront.vercel.app',
-        'https://quizfront-git-main-renatos-projects-ed3ac894.vercel.app',
-        'https://quizfront-renatos-projects-ed3ac894.vercel.app',
-        'http://localhost:3000',
-        'http://localhost:5173',
-        'http://localhost:8080'
-    ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true
-}));
-
-// Middleware adicional para OPTIONS requests
+// CORS super permissivo
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
     
     if (req.method === 'OPTIONS') {
         res.sendStatus(200);
@@ -61,16 +17,9 @@ app.use((req, res, next) => {
         next();
     }
 });
-app.use(express.json());
 
-// Log de todas as requisições
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    if (req.body && Object.keys(req.body).length > 0) {
-        console.log('Body:', JSON.stringify(req.body, null, 2));
-    }
-    next();
-});
+// Parse JSON
+app.use(express.json());
 
 // Configurar Mercado Pago
 const client = new MercadoPagoConfig({ 
@@ -79,92 +28,51 @@ const client = new MercadoPagoConfig({
 
 const payment = new Payment(client);
 
-// Função para gerar UUID
+// UUID simples
 function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// Endpoint de teste CORS
-app.get('/test-cors', (req, res) => {
-    res.json({
-        message: 'CORS funcionando!',
-        origin: req.headers.origin,
-        timestamp: new Date().toISOString(),
-        headers: req.headers
-    });
-});
-
-// Endpoint principal - teste
+// Teste básico
 app.get('/', (req, res) => {
     res.json({ 
-        message: '🚀 QuizBack API funcionando!',
+        message: 'QuizBack funcionando!',
         timestamp: new Date().toISOString(),
-        version: '1.0.0',
-        endpoints: {
-            'POST /process_payment': 'Processar pagamentos',
-            'GET /payment_status/:id': 'Consultar status do pagamento',
-            'POST /webhook': 'Receber notificações do Mercado Pago',
-            'GET /health': 'Health check do servidor'
-        },
-        frontend_url: 'https://quizfront.vercel.app',
-        cors_enabled: true
+        status: 'OK'
     });
 });
 
 // Health check
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        timestamp: new Date().toISOString(),
-        uptime: Math.floor(process.uptime()),
-        memory: process.memoryUsage(),
-        environment: process.env.NODE_ENV || 'development'
-    });
+    res.json({ status: 'OK' });
 });
 
 // Processar pagamentos
 app.post('/process_payment', async (req, res) => {
     try {
-        console.log('\n=== INICIANDO PROCESSAMENTO DE PAGAMENTO ===');
-        console.log('Timestamp:', new Date().toISOString());
-        console.log('Dados recebidos:', JSON.stringify(req.body, null, 2));
+        console.log('Recebido:', req.body);
 
-        // Extrair dados do request
         const {
             transaction_amount,
             token,
-            description,
-            installments,
             payment_method_id,
+            installments,
             issuer_id,
             payer,
-            uid,
-            external_reference
+            uid
         } = req.body;
 
-        // Validações obrigatórias
-        if (!transaction_amount) {
+        // Validação básica
+        if (!transaction_amount || !payer?.email) {
             return res.status(400).json({
-                error: 'transaction_amount é obrigatório',
-                received: transaction_amount
+                error: 'Dados obrigatórios: transaction_amount e payer.email'
             });
         }
 
-        if (!payer?.email) {
-            return res.status(400).json({
-                error: 'payer.email é obrigatório',
-                received: payer
-            });
-        }
-
-        // Montar dados base do pagamento
+        // Dados do pagamento
         const paymentData = {
             transaction_amount: Number(transaction_amount),
-            description: description || 'Pagamento Quiz Personalizado',
+            description: 'Quiz Personalizado',
             installments: Number(installments) || 1,
             payer: {
                 email: payer.email,
@@ -175,51 +83,25 @@ app.post('/process_payment', async (req, res) => {
                     number: payer.identification?.number || ''
                 }
             },
-            external_reference: external_reference || uid || `quiz_${Date.now()}`,
-            notification_url: 'https://quizback-production-98f5.up.railway.app/webhook',
-            additional_info: {
-                items: [{
-                    id: 'QUIZ-001',
-                    title: 'Quiz Personalizado - Suellen Seragi',
-                    description: 'Resultado personalizado baseado no quiz',
-                    quantity: 1,
-                    unit_price: Number(transaction_amount),
-                    category_id: 'services'
-                }],
-                payer: {
-                    first_name: payer.first_name || '',
-                    last_name: payer.last_name || '',
-                    phone: {
-                        area_code: payer.phone?.area_code || '',
-                        number: payer.phone?.number || ''
-                    }
-                }
-            }
+            external_reference: uid || generateUUID()
         };
 
-        // Adicionar dados específicos por método de pagamento
+        // Adicionar dados específicos por método
         if (payment_method_id === 'pix') {
-            console.log('Processando pagamento PIX');
             paymentData.payment_method_id = 'pix';
-        } else if (payment_method_id && payment_method_id.includes('bol')) {
-            console.log('Processando pagamento Boleto');
-            paymentData.payment_method_id = payment_method_id;
         } else if (token && payment_method_id) {
-            console.log('Processando pagamento com Cartão');
             paymentData.token = token;
             paymentData.payment_method_id = payment_method_id;
             if (issuer_id) paymentData.issuer_id = issuer_id;
         } else {
             return res.status(400).json({
-                error: 'Método de pagamento inválido',
-                received: { payment_method_id, token: !!token }
+                error: 'Método de pagamento inválido'
             });
         }
 
-        console.log('Dados finais para Mercado Pago:');
-        console.log(JSON.stringify(paymentData, null, 2));
+        console.log('Enviando para MP:', paymentData);
 
-        // Criar pagamento no Mercado Pago
+        // Criar pagamento
         const result = await payment.create({
             body: paymentData,
             requestOptions: { 
@@ -227,169 +109,62 @@ app.post('/process_payment', async (req, res) => {
             }
         });
 
-        console.log('Resposta do Mercado Pago:');
-        console.log(JSON.stringify(result, null, 2));
+        console.log('Resposta MP:', result.status, result.id);
 
-        // Preparar resposta padronizada
+        // Resposta
         const response = {
             id: result.id,
             status: result.status,
             status_detail: result.status_detail,
             payment_method_id: result.payment_method_id,
-            payment_type_id: result.payment_type_id,
             transaction_amount: result.transaction_amount,
-            external_reference: result.external_reference,
-            date_created: result.date_created,
-            date_approved: result.date_approved
+            external_reference: result.external_reference
         };
 
-        // Adicionar dados específicos para PIX
+        // Dados PIX
         if (result.point_of_interaction?.transaction_data) {
-            response.pix_data = {
-                qr_code: result.point_of_interaction.transaction_data.qr_code,
-                qr_code_base64: result.point_of_interaction.transaction_data.qr_code_base64,
-                ticket_url: result.point_of_interaction.transaction_data.ticket_url
-            };
+            response.pix_data = result.point_of_interaction.transaction_data;
         }
-
-        // Adicionar dados para boleto
-        if (result.transaction_details?.external_resource_url) {
-            response.boleto_url = result.transaction_details.external_resource_url;
-        }
-
-        console.log('=== PAGAMENTO CRIADO COM SUCESSO ===');
-        console.log('Payment ID:', result.id);
-        console.log('Status:', result.status);
-        console.log('==========================================\n');
 
         res.status(201).json(response);
 
     } catch (error) {
-        console.error('\n=== ERRO NO PROCESSAMENTO ===');
-        console.error('Timestamp:', new Date().toISOString());
-        console.error('Erro completo:', error);
-        
-        if (error.cause && error.cause.length > 0) {
-            const apiError = error.cause[0];
-            console.error('Erro específico da API:', apiError);
-            
-            res.status(400).json({
-                error: 'Erro do Mercado Pago',
-                message: apiError.description || error.message,
-                code: apiError.code,
-                details: apiError
-            });
-        } else {
-            console.error('Stack trace:', error.stack);
-            res.status(500).json({
-                error: 'Erro interno do servidor',
-                message: error.message
-            });
-        }
-        console.error('===============================\n');
-    }
-});
-
-// Consultar status do pagamento
-app.get('/payment_status/:paymentId', async (req, res) => {
-    try {
-        const { paymentId } = req.params;
-        
-        console.log(`Consultando status do pagamento: ${paymentId}`);
-        
-        const result = await payment.get({ id: paymentId });
-        
-        const response = {
-            id: result.id,
-            status: result.status,
-            status_detail: result.status_detail,
-            payment_method_id: result.payment_method_id,
-            transaction_amount: result.transaction_amount,
-            date_approved: result.date_approved,
-            date_created: result.date_created,
-            external_reference: result.external_reference
-        };
-
-        console.log(`Status encontrado: ${result.status}`);
-        res.json(response);
-        
-    } catch (error) {
-        console.error('Erro ao consultar status:', error);
-        res.status(404).json({
-            error: 'Pagamento não encontrado',
-            message: error.message,
-            payment_id: req.params.paymentId
+        console.error('Erro:', error);
+        res.status(500).json({
+            error: 'Erro ao processar pagamento',
+            message: error.message
         });
     }
 });
 
-// Webhook para notificações do Mercado Pago
-app.post('/webhook', (req, res) => {
-    console.log('\n=== WEBHOOK RECEBIDO ===');
-    console.log('Timestamp:', new Date().toISOString());
-    console.log('Headers:', req.headers);
-    console.log('Body:', JSON.stringify(req.body, null, 2));
-    
-    const { type, data } = req.body;
-    
-    if (type === 'payment') {
-        console.log(`Notificação de pagamento recebida: ${data.id}`);
-        
-        // Aqui você pode:
-        // 1. Consultar o status atual do pagamento
-        // 2. Atualizar seu banco de dados
-        // 3. Enviar emails de confirmação
-        // 4. Disparar outras ações
-        
-        // Exemplo de como consultar o pagamento:
-        // payment.get({ id: data.id })
-        //   .then(result => {
-        //     console.log('Status atualizado:', result.status);
-        //   })
-        //   .catch(console.error);
+// Status do pagamento
+app.get('/payment_status/:id', async (req, res) => {
+    try {
+        const result = await payment.get({ id: req.params.id });
+        res.json({
+            id: result.id,
+            status: result.status,
+            status_detail: result.status_detail
+        });
+    } catch (error) {
+        res.status(404).json({ error: 'Pagamento não encontrado' });
     }
-    
-    console.log('=========================\n');
-    
-    // Sempre responder 200 OK para o Mercado Pago
+});
+
+// Webhook
+app.post('/webhook', (req, res) => {
+    console.log('Webhook:', req.body);
     res.status(200).send('OK');
 });
 
-// Middleware de tratamento de erros
-app.use((error, req, res, next) => {
-    console.error('Erro não tratado:', error);
-    res.status(500).json({
-        error: 'Erro interno do servidor',
-        message: error.message,
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Middleware para rotas não encontradas
+// 404
 app.use('*', (req, res) => {
-    res.status(404).json({
-        error: 'Endpoint não encontrado',
-        path: req.originalUrl,
-        method: req.method,
-        available_endpoints: [
-            'GET /',
-            'GET /health',
-            'POST /process_payment',
-            'GET /payment_status/:id',
-            'POST /webhook'
-        ]
-    });
+    res.status(404).json({ error: 'Endpoint não encontrado' });
 });
 
 // Iniciar servidor
-app.listen(port, () => {
-    console.log('=================================');
-    console.log('🚀 QuizBack API iniciada!');
-    console.log(`📡 Porta: ${port}`);
-    console.log(`🌐 URL: https://quizback-production-98f5.up.railway.app`);
-    console.log(`🎯 Frontend: https://quizfront.vercel.app`);
-    console.log(`⏰ Iniciado em: ${new Date().toISOString()}`);
-    console.log('=================================\n');
+app.listen(port, '0.0.0.0', () => {
+    console.log(`QuizBack rodando na porta ${port}`);
 });
 
 module.exports = app;
