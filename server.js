@@ -6,15 +6,34 @@ const { MercadoPagoConfig, Payment } = require('mercadopago');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
+// Middleware CORS - Configuração mais permissiva
 app.use(cors({
     origin: [
         'https://quizfront.vercel.app',
+        'https://quizfront-git-main-renatos-projects-ed3ac894.vercel.app',
+        'https://quizfront-renatos-projects-ed3ac894.vercel.app',
         'http://localhost:3000',
-        'http://localhost:5173'
+        'http://localhost:5173',
+        'http://localhost:8080'
     ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
 }));
+
+// Middleware adicional para OPTIONS requests
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
 app.use(express.json());
 
 // Log de todas as requisições
@@ -41,6 +60,16 @@ function generateUUID() {
         return v.toString(16);
     });
 }
+
+// Endpoint de teste CORS
+app.get('/test-cors', (req, res) => {
+    res.json({
+        message: 'CORS funcionando!',
+        origin: req.headers.origin,
+        timestamp: new Date().toISOString(),
+        headers: req.headers
+    });
+});
 
 // Endpoint principal - teste
 app.get('/', (req, res) => {
