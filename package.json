@@ -1,14 +1,16 @@
 {
   "name": "quizback",
   "version": "1.0.0",
-  "description": "Backend Quiz Mercado Pago",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "mercadopago": "^2.0.11"
+    "mercadopago": "^2.0.11",
+    "uuid": "^9.0.0"
   },
   "engines": {
     "node": ">=16.0.0"
