@@ -1,145 +1,26 @@
 const express = require('express');
 const { MercadoPagoConfig, Payment, Preference } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
-const crypto = require('crypto');
 const router = express.Router();
 
 // ============================================
-// 🔧 CONFIGURAÇÃO MERCADO PAGO - PRODUÇÃO APENAS (ERRO 2006 CORRIGIDO)
+// CONFIGURAÇÃO SIMPLES - PRODUÇÃO
 // ============================================
 
-// ✅ CORREÇÃO PRINCIPAL: Apenas credenciais de produção - SEM FALLBACK para TEST-
-const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY;
-
-// ✅ VALIDAÇÃO RIGOROSA DE CREDENCIAIS
-if (!accessToken) {
-    console.error('❌ MERCADOPAGO_ACCESS_TOKEN não configurado!');
-    console.error('❌ Configure no Railway: Settings → Environment');
-    process.exit(1);
-}
-
-if (!publicKey) {
-    console.error('❌ MERCADOPAGO_PUBLIC_KEY não configurado!');
-    console.error('❌ Configure no Railway: Settings → Environment');
-    process.exit(1);
-}
-
-// ✅ CORREÇÃO ERRO 2006: Validar que estamos usando credenciais de PRODUÇÃO
-if (accessToken.startsWith('TEST-')) {
-    console.error('❌ ERRO CRÍTICO: Usando ACCESS_TOKEN de TESTE em produção!');
-    console.error('❌ Configure credenciais de PRODUÇÃO (APP_USR-) no Railway');
-    console.error('❌ Este erro causará: Card Token not found (2006)');
-    console.error('❌ SOLUÇÃO: MERCADOPAGO_ACCESS_TOKEN=APP_USR-...');
-}
-
-if (publicKey.startsWith('TEST-')) {
-    console.error('❌ ERRO CRÍTICO: Usando PUBLIC_KEY de TESTE em produção!');
-    console.error('❌ Configure credenciais de PRODUÇÃO (APP_USR-) no Railway');
-    console.error('❌ Este erro causará: Card Token not found (2006)');
-    console.error('❌ SOLUÇÃO: MERCADOPAGO_PUBLIC_KEY=APP_USR-...');
-}
-
-// ✅ LOGS DETALHADOS para debug em produção
-console.log('🔧 =================================');
-console.log('🔧 CONFIGURAÇÃO MERCADO PAGO');
-console.log('🔧 =================================');
-console.log('🔑 Access Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'NÃO CONFIGURADO');
-console.log('🔑 Public Key:', publicKey ? publicKey.substring(0, 20) + '...' : 'NÃO CONFIGURADO');
-console.log('🌐 Ambiente:', process.env.NODE_ENV || 'production');
-console.log('🏭 Produção (Access)?', accessToken?.startsWith('APP_USR-') ? '✅ SIM' : '❌ NÃO');
-console.log('🏭 Produção (Public)?', publicKey?.startsWith('APP_USR-') ? '✅ SIM' : '❌ NÃO');
-console.log('🔧 =================================');
-
-// ✅ INICIALIZAR MERCADO PAGO - APENAS COM CREDENCIAIS DE PRODUÇÃO
 const client = new MercadoPagoConfig({
-    accessToken: accessToken, // ✅ SEM FALLBACK PARA TEST-
-    options: {
-        timeout: 5000,
-        idempotencyKey: uuidv4()
-    }
+    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
 });
 
 const payment = new Payment(client);
 const preference = new Preference(client);
 
 // ============================================
-// FUNÇÃO PARA VALIDAR ASSINATURA WEBHOOK
-// ============================================
-
-function validateWebhookSignature(req) {
-    try {
-        // Obter headers necessários
-        const xSignature = req.headers['x-signature'];
-        const xRequestId = req.headers['x-request-id'];
-        
-        if (!xSignature) {
-            console.log('⚠️ Webhook sem assinatura - pode ser teste');
-            return true; // Aceitar para testes locais
-        }
-
-        // Extrair timestamp e hash da assinatura
-        const parts = xSignature.split(',');
-        let ts = null;
-        let hash = null;
-
-        parts.forEach(part => {
-            const [key, value] = part.split('=');
-            if (key.trim() === 'ts') ts = value.trim();
-            if (key.trim() === 'v1') hash = value.trim();
-        });
-
-        // Obter dados da notificação
-        const dataId = req.query['data.id'] || req.body?.data?.id || '';
-        
-        // Chave secreta (será obtida do painel após configuração)
-        const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-        
-        if (!secret) {
-            console.log('⚠️ MERCADOPAGO_WEBHOOK_SECRET não configurado');
-            return true; // Aceitar até configurar
-        }
-
-        // Criar manifest string conforme documentação
-        const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
-        
-        // Gerar HMAC SHA256
-        const expectedSignature = crypto
-            .createHmac('sha256', secret)
-            .update(manifest)
-            .digest('hex');
-
-        // Comparar assinaturas
-        const isValid = expectedSignature === hash;
-        
-        console.log(`🔐 Validação webhook: ${isValid ? 'VÁLIDA' : 'INVÁLIDA'}`);
-        
-        return isValid;
-
-    } catch (error) {
-        console.error('❌ Erro na validação da assinatura:', error);
-        return false;
-    }
-}
-
-// ============================================
-// PROCESSAR PAGAMENTOS (PRODUÇÃO APENAS)
+// PROCESSAR PAGAMENTOS
 // ============================================
 
 router.post('/process_payment', async (req, res) => {
     try {
-        console.log('💳 ===================================');
-        console.log('💳 PROCESSANDO PAGAMENTO (PRODUÇÃO)');
-        console.log('💳 ===================================');
-        console.log('💳 Dados recebidos:', {
-            payment_method_id: req.body.payment_method_id,
-            transaction_amount: req.body.transaction_amount,
-            uid: req.body.uid,
-            has_token: !!req.body.token,
-            token_preview: req.body.token ? req.body.token.substring(0, 15) + '...' : 'N/A',
-            issuer_id: req.body.issuer_id,
-            installments: req.body.installments
-        });
+        console.log('💳 Processando pagamento:', req.body);
 
         const { 
             token,
@@ -152,9 +33,8 @@ router.post('/process_payment', async (req, res) => {
             issuer_id
         } = req.body;
 
-        // ✅ VALIDAÇÕES BÁSICAS RIGOROSAS
+        // Validações básicas
         if (!transaction_amount || transaction_amount <= 0) {
-            console.error('❌ Valor inválido:', transaction_amount);
             return res.status(400).json({
                 error: 'Valor inválido',
                 message: 'O valor do pagamento deve ser maior que zero'
@@ -162,28 +42,22 @@ router.post('/process_payment', async (req, res) => {
         }
 
         if (!payer || !payer.email) {
-            console.error('❌ Email do pagador ausente');
             return res.status(400).json({
                 error: 'Dados do pagador inválidos',
                 message: 'Email do pagador é obrigatório'
             });
         }
 
-        // UID para rastreamento (se não vier, gera um)
+        // UID para rastreamento
         const paymentUID = uid || uuidv4();
         const idempotencyKey = uuidv4();
-
-        console.log('🆔 UID do pagamento:', paymentUID);
-        console.log('🔑 Idempotency Key:', idempotencyKey);
 
         // ============================================
         // PAGAMENTO PIX
         // ============================================
 
         if (payment_method_id === 'pix') {
-            console.log('🟢 ===========================');
-            console.log('🟢 PROCESSANDO PIX (PRODUÇÃO)');
-            console.log('🟢 ===========================');
+            console.log('🟢 Processando pagamento PIX');
 
             const pixPaymentData = {
                 transaction_amount: Number(transaction_amount),
@@ -202,25 +76,16 @@ router.post('/process_payment', async (req, res) => {
                 notification_url: `${process.env.BASE_URL}/api/webhook`,
                 metadata: {
                     uid: paymentUID,
-                    teste_prosperidade: true,
-                    ambiente: 'producao',
-                    timestamp: new Date().toISOString()
+                    teste_prosperidade: true
                 }
             };
-
-            console.log('📤 Dados PIX para Mercado Pago:', pixPaymentData);
 
             const pixResult = await payment.create({
                 body: pixPaymentData,
                 requestOptions: { idempotencyKey }
             });
 
-            console.log('✅ PIX criado com sucesso (PRODUÇÃO):', {
-                id: pixResult.id,
-                status: pixResult.status,
-                status_detail: pixResult.status_detail,
-                uid: paymentUID
-            });
+            console.log('✅ PIX criado:', pixResult.id);
 
             return res.status(201).json({
                 id: pixResult.id,
@@ -241,27 +106,15 @@ router.post('/process_payment', async (req, res) => {
         // ============================================
 
         if (payment_method_id && token) {
-            console.log('💳 ==============================');
-            console.log('💳 PROCESSANDO CARTÃO (PRODUÇÃO)');
-            console.log('💳 ==============================');
+            console.log('💳 Processando pagamento com cartão');
 
-            // ✅ CORREÇÃO ERRO 2006: Validação rigorosa do token
-            if (!token || typeof token !== 'string' || token.length < 10) {
-                console.error('❌ Token inválido recebido:', {
-                    token_exists: !!token,
-                    token_type: typeof token,
-                    token_length: token ? token.length : 0,
-                    token_preview: token ? token.substring(0, 10) + '...' : 'N/A'
-                });
-                
+            if (!token) {
                 return res.status(400).json({
                     error: 'Token inválido',
-                    message: 'Token do cartão é obrigatório e deve ser válido',
-                    details: 'Verifique se as credenciais frontend/backend são da mesma conta'
+                    message: 'Token do cartão é obrigatório'
                 });
             }
 
-            // ✅ DADOS DO PAGAMENTO COM CARTÃO
             const cardPaymentData = {
                 transaction_amount: Number(transaction_amount),
                 token: token,
@@ -283,41 +136,20 @@ router.post('/process_payment', async (req, res) => {
                 statement_descriptor: 'TESTE PROSPERIDADE',
                 metadata: {
                     uid: paymentUID,
-                    teste_prosperidade: true,
-                    ambiente: 'producao',
-                    timestamp: new Date().toISOString()
+                    teste_prosperidade: true
                 }
             };
 
-            console.log('📤 Dados CARTÃO para Mercado Pago (PRODUÇÃO):', {
-                transaction_amount: cardPaymentData.transaction_amount,
-                payment_method_id: cardPaymentData.payment_method_id,
-                installments: cardPaymentData.installments,
-                token_preview: token.substring(0, 15) + '...',
-                external_reference: paymentUID,
-                issuer_id: cardPaymentData.issuer_id,
-                payer_email: cardPaymentData.payer.email
-            });
+            console.log('📤 Enviando pagamento para Mercado Pago');
 
-            // ✅ CRIAR PAGAMENTO NO MERCADO PAGO
             const cardResult = await payment.create({
                 body: cardPaymentData,
                 requestOptions: { idempotencyKey }
             });
 
-            console.log('✅ =============================');
-            console.log('✅ PAGAMENTO CARTÃO CRIADO (PRODUÇÃO)');
-            console.log('✅ =============================');
-            console.log('✅ Resultado:', {
-                id: cardResult.id,
-                status: cardResult.status,
-                status_detail: cardResult.status_detail,
-                uid: paymentUID,
-                transaction_amount: cardResult.transaction_amount,
-                payment_method_id: cardResult.payment_method_id
-            });
+            console.log('✅ Pagamento cartão criado:', cardResult.id, cardResult.status);
 
-            // ✅ RESPOSTA BASEADA NO STATUS
+            // Resposta baseada no status
             const response = {
                 id: cardResult.id,
                 status: cardResult.status,
@@ -329,61 +161,25 @@ router.post('/process_payment', async (req, res) => {
 
             if (cardResult.status === 'approved') {
                 response.redirect_url = `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`;
-                console.log('🎉 PAGAMENTO APROVADO! Redirecionando para:', response.redirect_url);
             }
 
             return res.status(201).json(response);
         }
 
-        // ✅ MÉTODO DE PAGAMENTO NÃO SUPORTADO
-        console.error('❌ Método de pagamento não suportado:', {
-            payment_method_id,
-            has_token: !!token
-        });
-        
+        // Método de pagamento não suportado
         return res.status(400).json({
             error: 'Método de pagamento não suportado',
             message: 'Apenas cartão de crédito e PIX são aceitos'
         });
 
     } catch (error) {
-        console.error('❌ ===============================');
-        console.error('❌ ERRO AO PROCESSAR PAGAMENTO (PRODUÇÃO)');
-        console.error('❌ ===============================');
-        console.error('❌ Erro completo:', error);
+        console.error('❌ Erro ao processar pagamento:', error);
 
-        // ✅ CORREÇÃO ERRO 2006: Tratamento específico de erros
+        // Erros específicos do Mercado Pago
         if (error.cause && error.cause.length > 0) {
             const mpError = error.cause[0];
+            console.error('🔍 Erro Mercado Pago:', mpError);
             
-            console.error('🔍 Erro detalhado do Mercado Pago:', {
-                code: mpError.code,
-                description: mpError.description,
-                data: mpError.data
-            });
-
-            // ✅ TRATAMENTO ESPECÍFICO DO ERRO 2006
-            if (mpError.code === 2006) {
-                console.error('🚨 ===============================');
-                console.error('🚨 ERRO 2006: Card Token not found');
-                console.error('🚨 ===============================');
-                console.error('🔧 CAUSA: Token criado em ambiente diferente do processamento');
-                console.error('🔧 SOLUÇÃO: Verificar credenciais frontend/backend:');
-                console.error('🔧 FRONTEND deve usar: APP_USR-d6a5ce3d-f58e-4ad8-9ae8-22ff5ff2bb14');
-                console.error('🔧 BACKEND deve usar: APP_USR-6089081814401202-052318-ae2d7c2749034ba7ff38076cc4945619-1108475182');
-                console.error('🔧 IMPORTANTE: Ambas devem ser da MESMA conta Mercado Pago!');
-                console.error('🚨 ===============================');
-                
-                return res.status(400).json({
-                    error: 'Token do cartão inválido (Erro 2006)',
-                    message: 'O token do cartão não foi encontrado. Isso indica incompatibilidade entre credenciais.',
-                    code: mpError.code,
-                    details: 'Verifique se as credenciais de produção frontend/backend são da mesma conta',
-                    solution: 'Configure credenciais APP_USR- no Railway e frontend'
-                });
-            }
-
-            // ✅ OUTROS ERROS DO MERCADO PAGO
             return res.status(400).json({
                 error: 'Erro do Mercado Pago',
                 message: mpError.description || mpError.message,
@@ -391,7 +187,6 @@ router.post('/process_payment', async (req, res) => {
             });
         }
 
-        // ✅ ERRO GENÉRICO
         return res.status(500).json({
             error: 'Erro interno',
             message: 'Não foi possível processar o pagamento'
@@ -400,134 +195,60 @@ router.post('/process_payment', async (req, res) => {
 });
 
 // ============================================
-// WEBHOOK PARA PRODUÇÃO
+// WEBHOOK
 // ============================================
 
 router.post('/webhook', async (req, res) => {
     try {
-        console.log('🔔 ===========================');
-        console.log('🔔 WEBHOOK RECEBIDO (PRODUÇÃO)');
-        console.log('🔔 ===========================');
-        console.log('🔔 Body:', req.body);
-        console.log('🔔 Query:', req.query);
-        console.log('🔔 Headers importantes:', {
-            'x-signature': req.headers['x-signature'],
-            'x-request-id': req.headers['x-request-id']
-        });
+        console.log('🔔 Webhook recebido:', req.body);
 
-        // ✅ VALIDAR ASSINATURA CONFORME DOCUMENTAÇÃO
-        const isValidSignature = validateWebhookSignature(req);
-        
-        if (!isValidSignature) {
-            console.error('❌ Assinatura webhook inválida - possível fraude');
-            return res.status(401).json({ 
-                error: 'Assinatura inválida',
-                message: 'Webhook rejeitado por segurança' 
-            });
-        }
-
-        // Obter dados da notificação (padrão Webhooks)
-        const { action, data, type } = req.body;
-
-        // ✅ RESPONDER IMEDIATAMENTE CONFORME DOCUMENTAÇÃO
+        // Responder imediatamente
         res.status(200).json({ 
             received: true,
-            timestamp: new Date().toISOString(),
-            processed: true
+            timestamp: new Date().toISOString()
         });
 
-        // ============================================
-        // PROCESSAR NOTIFICAÇÃO DE PAGAMENTO
-        // ============================================
+        const { action, data } = req.body;
 
         if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
             const paymentId = data.id;
             
             try {
-                console.log(`📋 Buscando detalhes do pagamento ${paymentId} (PRODUÇÃO)...`);
-                
                 const paymentDetails = await payment.get({ id: paymentId });
                 
-                console.log(`📊 ===========================`);
-                console.log(`📊 STATUS PAGAMENTO ${paymentId} (PRODUÇÃO)`);
-                console.log(`📊 ===========================`);
-                console.log(`📊 Status:`, paymentDetails.status);
-                console.log(`📊 Status Detail:`, paymentDetails.status_detail);
-                console.log(`📊 UID:`, paymentDetails.external_reference);
-                console.log(`📊 Valor:`, paymentDetails.transaction_amount);
-                console.log(`📊 Método:`, paymentDetails.payment_method_id);
-                console.log(`📊 ===========================`);
-                
-                // ============================================
-                // AÇÕES BASEADAS NO STATUS DO PAGAMENTO
-                // ============================================
+                console.log(`📊 Status do pagamento ${paymentId}:`, {
+                    status: paymentDetails.status,
+                    uid: paymentDetails.external_reference,
+                    amount: paymentDetails.transaction_amount
+                });
                 
                 if (paymentDetails.status === 'approved') {
                     const uid = paymentDetails.external_reference;
-                    const amount = paymentDetails.transaction_amount;
-                    const method = paymentDetails.payment_method_id;
-                    
-                    console.log(`🎉 ===============================`);
-                    console.log(`🎉 PAGAMENTO APROVADO (PRODUÇÃO)!`);
-                    console.log(`🎉 ===============================`);
-                    console.log(`🎉 💰 Valor: R$ ${amount}`);
-                    console.log(`🎉 💳 Método: ${method}`);
-                    console.log(`🎉 🆔 UID: ${uid}`);
-                    console.log(`🎉 🔗 Resultado: https://www.suellenseragi.com.br/resultado?uid=${uid}`);
-                    console.log(`🎉 ===============================`);
-                    
-                    // 🎯 AQUI VOCÊ PODE ADICIONAR SUAS AÇÕES DE PRODUÇÃO:
-                    // - Salvar no banco de dados
-                    // - Enviar email de confirmação
-                    // - Liberar acesso ao resultado
-                    // - Integrar com outros sistemas
-                    // - Analytics/tracking
-                    
-                } else if (paymentDetails.status === 'pending') {
-                    const uid = paymentDetails.external_reference;
-                    console.log(`⏳ Pagamento pendente para UID: ${uid} (PRODUÇÃO)`);
-                    
-                } else if (['rejected', 'cancelled'].includes(paymentDetails.status)) {
-                    const uid = paymentDetails.external_reference;
-                    console.log(`❌ Pagamento ${paymentDetails.status} para UID: ${uid} (PRODUÇÃO)`);
+                    console.log(`✅ PAGAMENTO APROVADO! UID: ${uid}`);
                 }
 
             } catch (error) {
-                console.error('❌ Erro ao buscar detalhes do pagamento (PRODUÇÃO):', error);
+                console.error('❌ Erro ao buscar detalhes do pagamento:', error);
             }
-        } else {
-            console.log('ℹ️ Notificação ignorada - não é payment.updated:', { action, type });
         }
 
     } catch (error) {
-        console.error('❌ Erro no processamento do webhook (PRODUÇÃO):', error);
+        console.error('❌ Erro no webhook:', error);
         
-        // ⚠️ MESMO COM ERRO, RESPONDER 200 PARA EVITAR REENVIOS
         if (!res.headersSent) {
-            res.status(200).json({ 
-                received: true, 
-                error: 'Erro interno processamento' 
-            });
+            res.status(200).json({ received: true });
         }
     }
 });
 
 // ============================================
-// CONSULTAR STATUS DE PAGAMENTO
+// CONSULTAR PAGAMENTO
 // ============================================
 
 router.get('/payment/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        
-        console.log(`🔍 Consultando pagamento ${id} (PRODUÇÃO)...`);
-        
         const paymentDetails = await payment.get({ id });
-        
-        console.log(`📋 Pagamento ${id} encontrado:`, {
-            status: paymentDetails.status,
-            uid: paymentDetails.external_reference
-        });
         
         res.status(200).json({
             id: paymentDetails.id,
@@ -541,10 +262,9 @@ router.get('/payment/:id', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao consultar pagamento (PRODUÇÃO):', error);
+        console.error('❌ Erro ao consultar pagamento:', error);
         res.status(404).json({
-            error: 'Pagamento não encontrado',
-            message: 'ID de pagamento inválido'
+            error: 'Pagamento não encontrado'
         });
     }
 });
@@ -556,10 +276,7 @@ router.get('/payment/:id', async (req, res) => {
 router.post('/create_preference', async (req, res) => {
     try {
         const { uid, amount = 10, payer_email } = req.body;
-        
         const paymentUID = uid || uuidv4();
-
-        console.log(`🛍️ Criando preferência para UID: ${paymentUID} (PRODUÇÃO)`);
 
         const preferenceData = {
             items: [
@@ -577,8 +294,8 @@ router.post('/create_preference', async (req, res) => {
             },
             back_urls: {
                 success: `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`,
-                failure: `https://quizfront.vercel.app/erro?uid=${paymentUID}`,
-                pending: `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`
+                failure: `https://quizfront.vercel.app`,
+                pending: `https://quizfront.vercel.app`
             },
             auto_return: 'approved',
             external_reference: paymentUID,
@@ -586,24 +303,20 @@ router.post('/create_preference', async (req, res) => {
             statement_descriptor: 'TESTE PROSPERIDADE',
             metadata: {
                 uid: paymentUID,
-                teste_prosperidade: true,
-                ambiente: 'producao'
+                teste_prosperidade: true
             }
         };
 
         const result = await preference.create({ body: preferenceData });
 
-        console.log(`✅ Preferência criada: ${result.id} (PRODUÇÃO)`);
-
         res.status(201).json({
             id: result.id,
             init_point: result.init_point,
-            sandbox_init_point: result.sandbox_init_point,
             uid: paymentUID
         });
 
     } catch (error) {
-        console.error('❌ Erro ao criar preferência (PRODUÇÃO):', error);
+        console.error('❌ Erro ao criar preferência:', error);
         res.status(500).json({
             error: 'Erro ao criar preferência',
             message: error.message
