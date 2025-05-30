@@ -1,18 +1,82 @@
 const express = require('express');
 const { MercadoPagoConfig, Payment, Preference } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const router = express.Router();
 
 // ============================================
-// CONFIGURAÇÃO SIMPLES - PRODUÇÃO
+// CONFIGURAÇÃO MERCADO PAGO (ORIGINAL)
 // ============================================
 
 const client = new MercadoPagoConfig({
-    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN
+    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+    options: {
+        timeout: 5000,
+        idempotencyKey: uuidv4()
+    }
 });
 
 const payment = new Payment(client);
 const preference = new Preference(client);
+
+// ============================================
+// FUNÇÃO PARA VALIDAR ASSINATURA WEBHOOK
+// ============================================
+
+function validateWebhookSignature(req) {
+    try {
+        // Obter headers necessários
+        const xSignature = req.headers['x-signature'];
+        const xRequestId = req.headers['x-request-id'];
+        
+        if (!xSignature) {
+            console.log('⚠️ Webhook sem assinatura - pode ser teste');
+            return true; // Aceitar para testes locais
+        }
+
+        // Extrair timestamp e hash da assinatura
+        const parts = xSignature.split(',');
+        let ts = null;
+        let hash = null;
+
+        parts.forEach(part => {
+            const [key, value] = part.split('=');
+            if (key.trim() === 'ts') ts = value.trim();
+            if (key.trim() === 'v1') hash = value.trim();
+        });
+
+        // Obter dados da notificação
+        const dataId = req.query['data.id'] || req.body?.data?.id || '';
+        
+        // Chave secreta (será obtida do painel após configuração)
+        const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+        
+        if (!secret) {
+            console.log('⚠️ MERCADOPAGO_WEBHOOK_SECRET não configurado');
+            return true; // Aceitar até configurar
+        }
+
+        // Criar manifest string conforme documentação
+        const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+        
+        // Gerar HMAC SHA256
+        const expectedSignature = crypto
+            .createHmac('sha256', secret)
+            .update(manifest)
+            .digest('hex');
+
+        // Comparar assinaturas
+        const isValid = expectedSignature === hash;
+        
+        console.log(`🔐 Validação webhook: ${isValid ? 'VÁLIDA' : 'INVÁLIDA'}`);
+        
+        return isValid;
+
+    } catch (error) {
+        console.error('❌ Erro na validação da assinatura:', error);
+        return false;
+    }
+}
 
 // ============================================
 // PROCESSAR PAGAMENTOS
@@ -20,7 +84,12 @@ const preference = new Preference(client);
 
 router.post('/process_payment', async (req, res) => {
     try {
-        console.log('💳 Processando pagamento:', req.body);
+        console.log('💳 Processando pagamento:', {
+            payment_method_id: req.body.payment_method_id,
+            transaction_amount: req.body.transaction_amount,
+            uid: req.body.uid,
+            has_token: !!req.body.token
+        });
 
         const { 
             token,
@@ -48,7 +117,7 @@ router.post('/process_payment', async (req, res) => {
             });
         }
 
-        // UID para rastreamento
+        // UID para rastreamento (se não vier, gera um)
         const paymentUID = uid || uuidv4();
         const idempotencyKey = uuidv4();
 
@@ -108,10 +177,10 @@ router.post('/process_payment', async (req, res) => {
         if (payment_method_id && token) {
             console.log('💳 Processando pagamento com cartão');
 
-            if (!token) {
+            if (!token || typeof token !== 'string' || token.length < 10) {
                 return res.status(400).json({
                     error: 'Token inválido',
-                    message: 'Token do cartão é obrigatório'
+                    message: 'Token do cartão é obrigatório e deve ser válido'
                 });
             }
 
@@ -140,14 +209,25 @@ router.post('/process_payment', async (req, res) => {
                 }
             };
 
-            console.log('📤 Enviando pagamento para Mercado Pago');
+            console.log('📤 Dados do pagamento cartão:', {
+                transaction_amount: cardPaymentData.transaction_amount,
+                payment_method_id: cardPaymentData.payment_method_id,
+                installments: cardPaymentData.installments,
+                token_prefix: token.substring(0, 10) + '...',
+                external_reference: paymentUID
+            });
 
             const cardResult = await payment.create({
                 body: cardPaymentData,
                 requestOptions: { idempotencyKey }
             });
 
-            console.log('✅ Pagamento cartão criado:', cardResult.id, cardResult.status);
+            console.log('✅ Pagamento cartão criado:', {
+                id: cardResult.id,
+                status: cardResult.status,
+                status_detail: cardResult.status_detail,
+                uid: paymentUID
+            });
 
             // Resposta baseada no status
             const response = {
@@ -178,8 +258,13 @@ router.post('/process_payment', async (req, res) => {
         // Erros específicos do Mercado Pago
         if (error.cause && error.cause.length > 0) {
             const mpError = error.cause[0];
-            console.error('🔍 Erro Mercado Pago:', mpError);
             
+            console.error('🔍 Erro Mercado Pago:', {
+                code: mpError.code,
+                description: mpError.description,
+                data: mpError.data
+            });
+
             return res.status(400).json({
                 error: 'Erro do Mercado Pago',
                 message: mpError.description || mpError.message,
@@ -200,54 +285,100 @@ router.post('/process_payment', async (req, res) => {
 
 router.post('/webhook', async (req, res) => {
     try {
-        console.log('🔔 Webhook recebido:', req.body);
-
-        // Responder imediatamente
-        res.status(200).json({ 
-            received: true,
-            timestamp: new Date().toISOString()
+        console.log('🔔 Webhook recebido:', {
+            body: req.body,
+            query: req.query,
+            headers: {
+                'x-signature': req.headers['x-signature'],
+                'x-request-id': req.headers['x-request-id']
+            }
         });
 
-        const { action, data } = req.body;
+        // Validar assinatura conforme documentação
+        const isValidSignature = validateWebhookSignature(req);
+        
+        if (!isValidSignature) {
+            console.error('❌ Assinatura webhook inválida - possível fraude');
+            return res.status(401).json({ 
+                error: 'Assinatura inválida',
+                message: 'Webhook rejeitado por segurança' 
+            });
+        }
 
+        // Obter dados da notificação (padrão Webhooks)
+        const { action, data, type } = req.body;
+
+        // Responder imediatamente conforme documentação
+        res.status(200).json({ 
+            received: true,
+            timestamp: new Date().toISOString(),
+            processed: true
+        });
+
+        // Processar notificação de pagamento
         if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
             const paymentId = data.id;
             
             try {
+                console.log(`📋 Buscando detalhes do pagamento ${paymentId}...`);
+                
                 const paymentDetails = await payment.get({ id: paymentId });
                 
                 console.log(`📊 Status do pagamento ${paymentId}:`, {
                     status: paymentDetails.status,
-                    uid: paymentDetails.external_reference,
-                    amount: paymentDetails.transaction_amount
+                    status_detail: paymentDetails.status_detail,
+                    external_reference: paymentDetails.external_reference,
+                    transaction_amount: paymentDetails.transaction_amount,
+                    payment_method_id: paymentDetails.payment_method_id
                 });
                 
                 if (paymentDetails.status === 'approved') {
                     const uid = paymentDetails.external_reference;
-                    console.log(`✅ PAGAMENTO APROVADO! UID: ${uid}`);
+                    const amount = paymentDetails.transaction_amount;
+                    const method = paymentDetails.payment_method_id;
+                    
+                    console.log(`✅ PAGAMENTO APROVADO!`);
+                    console.log(`   💰 Valor: R$ ${amount}`);
+                    console.log(`   💳 Método: ${method}`);
+                    console.log(`   🆔 UID: ${uid}`);
+                    console.log(`   🔗 Resultado: https://www.suellenseragi.com.br/resultado?uid=${uid}`);
+                    
+                } else if (paymentDetails.status === 'pending') {
+                    const uid = paymentDetails.external_reference;
+                    console.log(`⏳ Pagamento pendente para UID: ${uid}`);
+                    
+                } else if (['rejected', 'cancelled'].includes(paymentDetails.status)) {
+                    const uid = paymentDetails.external_reference;
+                    console.log(`❌ Pagamento ${paymentDetails.status} para UID: ${uid}`);
                 }
 
             } catch (error) {
                 console.error('❌ Erro ao buscar detalhes do pagamento:', error);
             }
+        } else {
+            console.log('ℹ️ Notificação ignorada - não é payment.updated:', { action, type });
         }
 
     } catch (error) {
-        console.error('❌ Erro no webhook:', error);
+        console.error('❌ Erro no processamento do webhook:', error);
         
         if (!res.headersSent) {
-            res.status(200).json({ received: true });
+            res.status(200).json({ 
+                received: true, 
+                error: 'Erro interno processamento' 
+            });
         }
     }
 });
 
 // ============================================
-// CONSULTAR PAGAMENTO
+// CONSULTAR STATUS DE PAGAMENTO
 // ============================================
 
 router.get('/payment/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        
         const paymentDetails = await payment.get({ id });
         
         res.status(200).json({
@@ -264,7 +395,8 @@ router.get('/payment/:id', async (req, res) => {
     } catch (error) {
         console.error('❌ Erro ao consultar pagamento:', error);
         res.status(404).json({
-            error: 'Pagamento não encontrado'
+            error: 'Pagamento não encontrado',
+            message: 'ID de pagamento inválido'
         });
     }
 });
@@ -276,6 +408,7 @@ router.get('/payment/:id', async (req, res) => {
 router.post('/create_preference', async (req, res) => {
     try {
         const { uid, amount = 10, payer_email } = req.body;
+        
         const paymentUID = uid || uuidv4();
 
         const preferenceData = {
@@ -312,6 +445,7 @@ router.post('/create_preference', async (req, res) => {
         res.status(201).json({
             id: result.id,
             init_point: result.init_point,
+            sandbox_init_point: result.sandbox_init_point,
             uid: paymentUID
         });
 
