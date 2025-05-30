@@ -1,6 +1,7 @@
 const express = require('express');
 const { MercadoPagoConfig, Payment, Preference } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto'); // ← NOVO: Para validação de assinatura
 const router = express.Router();
 
 // ============================================
@@ -19,7 +20,66 @@ const payment = new Payment(client);
 const preference = new Preference(client);
 
 // ============================================
-// PROCESSAR PAGAMENTOS
+// FUNÇÃO PARA VALIDAR ASSINATURA WEBHOOK
+// ============================================
+
+function validateWebhookSignature(req) {
+  try {
+    // Obter headers necessários
+    const xSignature = req.headers['x-signature'];
+    const xRequestId = req.headers['x-request-id'];
+    
+    if (!xSignature) {
+      console.log('⚠️ Webhook sem assinatura - pode ser teste');
+      return true; // Aceitar para testes locais
+    }
+
+    // Extrair timestamp e hash da assinatura
+    const parts = xSignature.split(',');
+    let ts = null;
+    let hash = null;
+
+    parts.forEach(part => {
+      const [key, value] = part.split('=');
+      if (key.trim() === 'ts') ts = value.trim();
+      if (key.trim() === 'v1') hash = value.trim();
+    });
+
+    // Obter dados da notificação
+    const dataId = req.query['data.id'] || req.body?.data?.id || '';
+    
+    // Chave secreta (será obtida do painel após configuração)
+    const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+    
+    if (!secret) {
+      console.log('⚠️ MERCADOPAGO_WEBHOOK_SECRET não configurado');
+      return true; // Aceitar até configurar
+    }
+
+    // Criar manifest string conforme documentação
+    const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+    
+    // Gerar HMAC SHA256
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(manifest)
+      .digest('hex');
+
+    // Comparar assinaturas
+    const isValid = expectedSignature === hash;
+    
+    console.log(`🔐 Validação webhook: ${isValid ? 'VÁLIDA' : 'INVÁLIDA'}`);
+    
+    return isValid;
+
+  } catch (error) {
+    console.error('❌ Erro na validação da assinatura:', error);
+    return false;
+  }
+}
+
+// ============================================
+// PROCESSAR PAGAMENTOS (MANTIDO IGUAL)
 // ============================================
 
 router.post('/process_payment', async (req, res) => {
@@ -194,52 +254,115 @@ router.post('/process_payment', async (req, res) => {
 });
 
 // ============================================
-// WEBHOOK PARA NOTIFICAÇÕES
+// WEBHOOK MELHORADO COM VALIDAÇÃO DE ASSINATURA
 // ============================================
 
 router.post('/webhook', async (req, res) => {
   try {
-    console.log('🔔 Webhook recebido:', req.body);
+    console.log('🔔 Webhook recebido:', {
+      body: req.body,
+      query: req.query,
+      headers: {
+        'x-signature': req.headers['x-signature'],
+        'x-request-id': req.headers['x-request-id']
+      }
+    });
 
+    // ✅ VALIDAR ASSINATURA CONFORME DOCUMENTAÇÃO
+    const isValidSignature = validateWebhookSignature(req);
+    
+    if (!isValidSignature) {
+      console.error('❌ Assinatura webhook inválida - possível fraude');
+      return res.status(401).json({ 
+        error: 'Assinatura inválida',
+        message: 'Webhook rejeitado por segurança' 
+      });
+    }
+
+    // Obter dados da notificação (padrão Webhooks)
     const { action, data, type } = req.body;
 
-    // Verificar se é notificação de pagamento
+    // ✅ RESPONDER IMEDIATAMENTE CONFORME DOCUMENTAÇÃO
+    // O Mercado Pago aguarda resposta HTTP 200/201 em até 22 segundos
+    res.status(200).json({ 
+      received: true,
+      timestamp: new Date().toISOString(),
+      processed: true
+    });
+
+    // ============================================
+    // PROCESSAR NOTIFICAÇÃO DE PAGAMENTO
+    // ============================================
+
     if (action === 'payment.updated' && data && data.id) {
       const paymentId = data.id;
       
       try {
-        // Buscar detalhes do pagamento
+        console.log(`📋 Buscando detalhes do pagamento ${paymentId}...`);
+        
+        // ✅ BUSCAR DADOS COMPLETOS CONFORME DOCUMENTAÇÃO
         const paymentDetails = await payment.get({ id: paymentId });
         
-        console.log(`📋 Status do pagamento ${paymentId}:`, paymentDetails.status);
+        console.log(`📊 Status do pagamento ${paymentId}:`, {
+          status: paymentDetails.status,
+          status_detail: paymentDetails.status_detail,
+          external_reference: paymentDetails.external_reference,
+          transaction_amount: paymentDetails.transaction_amount,
+          payment_method_id: paymentDetails.payment_method_id
+        });
         
-        // Se aprovado, você pode realizar ações adicionais aqui
+        // ============================================
+        // AÇÕES BASEADAS NO STATUS DO PAGAMENTO
+        // ============================================
+        
         if (paymentDetails.status === 'approved') {
           const uid = paymentDetails.external_reference;
-          console.log(`✅ Pagamento aprovado para UID: ${uid}`);
+          const amount = paymentDetails.transaction_amount;
+          const method = paymentDetails.payment_method_id;
           
-          // Aqui você pode:
-          // - Atualizar banco de dados
+          console.log(`✅ PAGAMENTO APROVADO!`);
+          console.log(`   💰 Valor: R$ ${amount}`);
+          console.log(`   💳 Método: ${method}`);
+          console.log(`   🆔 UID: ${uid}`);
+          console.log(`   🔗 Resultado: https://www.suellenseragi.com.br/resultado?uid=${uid}`);
+          
+          // 🎯 AQUI VOCÊ PODE ADICIONAR SUAS AÇÕES:
+          // - Salvar no banco de dados
           // - Enviar email de confirmação
           // - Liberar acesso ao resultado
+          // - Integrar com outros sistemas
+          
+        } else if (paymentDetails.status === 'pending') {
+          const uid = paymentDetails.external_reference;
+          console.log(`⏳ Pagamento pendente para UID: ${uid}`);
+          
+        } else if (['rejected', 'cancelled'].includes(paymentDetails.status)) {
+          const uid = paymentDetails.external_reference;
+          console.log(`❌ Pagamento ${paymentDetails.status} para UID: ${uid}`);
         }
 
       } catch (error) {
         console.error('❌ Erro ao buscar detalhes do pagamento:', error);
       }
+    } else {
+      console.log('ℹ️ Notificação ignorada - não é payment.updated:', { action, type });
     }
 
-    // Sempre responder com sucesso para o webhook
-    res.status(200).json({ received: true });
-
   } catch (error) {
-    console.error('❌ Erro no webhook:', error);
-    res.status(500).json({ error: 'Erro interno do webhook' });
+    console.error('❌ Erro no processamento do webhook:', error);
+    
+    // ⚠️ MESMO COM ERRO, RESPONDER 200 PARA EVITAR REENVIOS
+    if (!res.headersSent) {
+      res.status(200).json({ 
+        received: true, 
+        error: 'Erro interno processamento' 
+      });
+    }
   }
 });
 
 // ============================================
-// CONSULTAR STATUS DE PAGAMENTO
+// CONSULTAR STATUS DE PAGAMENTO (MANTIDO IGUAL)
 // ============================================
 
 router.get('/payment/:id', async (req, res) => {
@@ -269,7 +392,7 @@ router.get('/payment/:id', async (req, res) => {
 });
 
 // ============================================
-// CRIAR PREFERÊNCIA (PARA CONTA MERCADO PAGO)
+// CRIAR PREFERÊNCIA (MANTIDO IGUAL)
 // ============================================
 
 router.post('/create_preference', async (req, res) => {
