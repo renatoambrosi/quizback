@@ -294,7 +294,7 @@ router.post('/webhook', async (req, res) => {
     // PROCESSAR NOTIFICAÇÃO DE PAGAMENTO
     // ============================================
 
-    if (action === 'payment.updated' && data && data.id) {
+    if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
       const paymentId = data.id;
       
       try {
