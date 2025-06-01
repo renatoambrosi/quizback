@@ -179,21 +179,19 @@ function createEnhancedAdditionalInfo(paymentData, userUID, req) {
         // IP do cliente (obrigatório para compliance)
         ip_address: req?.clientIP || req?.headers['x-forwarded-for'] || req?.connection.remoteAddress || "191.168.1.1",
         
-        // ITEMS - Estrutura COMPLETA conforme documentação
+        // ITEMS - Estrutura CONFORME DOCUMENTAÇÃO OFICIAL MP
         items: [
             {
                 id: "teste-prosperidade-001",
                 title: "Teste de Prosperidade",
                 description: "Acesso completo ao resultado personalizado do teste de prosperidade financeira",
                 picture_url: "https://www.suellenseragi.com.br/assets/logo-teste-prosperidade.png",
-                category_id: "services", // Categoria conforme MP
+                category_id: "services",
                 quantity: 1,
                 unit_price: 10,
                 type: "digital_service",
-                warranty: false,
-                // 🔥 CAMPOS ADICIONAIS PARA COMPLIANCE
-                currency_id: "BRL",
-                event_date: null // Para serviços digitais
+                event_date: new Date().toISOString(), // CONFORME DOC OFICIAL MP
+                warranty: false
             }
         ],
         
