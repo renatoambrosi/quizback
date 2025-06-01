@@ -23,7 +23,7 @@ const merchantOrder = new MerchantOrder(client);
 // FUNÇÕES UTILITÁRIAS MELHORADAS
 // ============================================
 
-// NOVO: Função para criar additional_info conforme documentação MP
+// CORRIGIDO: Função para criar additional_info conforme documentação MP EXATA
 function createEnhancedAdditionalInfo(paymentData, userUID) {
     const now = new Date().toISOString();
     
@@ -46,7 +46,7 @@ function createEnhancedAdditionalInfo(paymentData, userUID) {
             }
         ],
         
-        // PAYER - Dados COMPLETOS conforme documentação
+        // PAYER - Dados CORRIGIDOS conforme documentação EXATA
         payer: {
             first_name: paymentData.additional_info?.payer?.first_name || "Cliente",
             last_name: paymentData.additional_info?.payer?.last_name || "Teste Prosperidade",
@@ -54,13 +54,12 @@ function createEnhancedAdditionalInfo(paymentData, userUID) {
                 area_code: paymentData.additional_info?.payer?.phone?.area_code || "11",
                 number: paymentData.additional_info?.payer?.phone?.number || "999999999"
             },
-            address: paymentData.additional_info?.payer?.address || {
+            // CORRIGIDO: address structure conforme doc MP oficial
+            address: {
                 street_name: "Rua da Prosperidade",
                 street_number: "123",
-                neighborhood: "Centro",
-                city: "São Paulo",
-                state: "SP",
                 zip_code: "01234-567"
+                // REMOVIDO: city, neighborhood, state (não existem na doc oficial)
             },
             registration_date: paymentData.additional_info?.payer?.registration_date || now,
             is_prime_user: paymentData.additional_info?.payer?.is_prime_user || "0",
@@ -68,14 +67,14 @@ function createEnhancedAdditionalInfo(paymentData, userUID) {
             authentication_type: paymentData.additional_info?.payer?.authentication_type || "Native web"
         },
         
-        // SHIPMENTS - Dados de entrega (para serviços digitais)
+        // SHIPMENTS - Dados de entrega conforme doc oficial
         shipments: {
             receiver_address: {
                 street_name: "Entrega Digital",
                 street_number: "0",
                 zip_code: "00000-000",
-                city_name: "Online",
-                state_name: "Digital"
+                city_name: "São Paulo",    // CORRIGIDO: city_name (não city)
+                state_name: "SP"           // CORRIGIDO: state_name (não state)
             }
         }
     };
@@ -120,7 +119,7 @@ function validatePaymentData(paymentData) {
 
 router.post('/process_payment', async (req, res) => {
     try {
-        console.log('🧱 PROCESSANDO PAGAMENTO COM MELHORIAS COMPLETAS');
+        console.log('🧱 PROCESSANDO PAGAMENTO COM CAMPOS CORRIGIDOS');
         logPayment('RECEBIDO', 'pending', 'INICIANDO', req.body);
 
         // Validação aprimorada
@@ -150,11 +149,11 @@ router.post('/process_payment', async (req, res) => {
         const enhancedAdditionalInfo = createEnhancedAdditionalInfo(req.body, paymentUID);
 
         // ============================================
-        // PAGAMENTO CARTÃO - ESTRUTURA COMPLETA MP
+        // PAGAMENTO CARTÃO - ESTRUTURA CORRIGIDA MP
         // ============================================
 
         if (payment_method_id && token) {
-            console.log('💳 PROCESSANDO CARTÃO COM ESTRUTURA MELHORADA');
+            console.log('💳 PROCESSANDO CARTÃO COM CAMPOS CORRIGIDOS');
 
             const paymentData = {
                 // Dados básicos obrigatórios
@@ -165,7 +164,7 @@ router.post('/process_payment', async (req, res) => {
                 payment_method_id: payment_method_id,
                 issuer_id: Number(issuer_id),
                 
-                // PAYER - Estrutura COMPLETA conforme documentação
+                // PAYER - Estrutura CORRIGIDA conforme documentação
                 payer: {
                     email: payer.email,
                     first_name: enhancedAdditionalInfo.payer.first_name,
@@ -175,13 +174,19 @@ router.post('/process_payment', async (req, res) => {
                         number: payer.identification?.number || '12345678909'
                     },
                     phone: enhancedAdditionalInfo.payer.phone,
-                    address: enhancedAdditionalInfo.payer.address
+                    // CORRIGIDO: address structure conforme doc oficial
+                    address: {
+                        street_name: "Rua da Prosperidade",
+                        street_number: "123",
+                        zip_code: "01234-567"
+                        // REMOVIDO: city, neighborhood, state - NÃO EXISTEM no payer.address
+                    }
                 },
                 
                 // Referência externa (importante para rastreamento)
                 external_reference: paymentUID,
                 
-                // ADDITIONAL_INFO - Estrutura COMPLETA conforme documentação
+                // ADDITIONAL_INFO - Estrutura CORRIGIDA conforme documentação
                 additional_info: enhancedAdditionalInfo,
                 
                 // URLs e notificações
@@ -248,11 +253,11 @@ router.post('/process_payment', async (req, res) => {
         }
 
         // ============================================
-        // PAGAMENTO PIX - ESTRUTURA MELHORADA MP
+        // PAGAMENTO PIX - ESTRUTURA CORRIGIDA MP
         // ============================================
 
         if (payment_method_id === 'pix') {
-            console.log('🟢 PROCESSANDO PIX COM ESTRUTURA MELHORADA');
+            console.log('🟢 PROCESSANDO PIX COM CAMPOS CORRIGIDOS');
 
             const pixData = {
                 // Dados básicos obrigatórios
@@ -260,7 +265,7 @@ router.post('/process_payment', async (req, res) => {
                 description: description || 'Teste de Prosperidade - Resultado Personalizado',
                 payment_method_id: 'pix',
                 
-                // PAYER - Estrutura COMPLETA conforme documentação
+                // PAYER - Estrutura CORRIGIDA conforme documentação
                 payer: {
                     email: payer.email,
                     first_name: enhancedAdditionalInfo.payer.first_name,
@@ -270,13 +275,18 @@ router.post('/process_payment', async (req, res) => {
                         number: '12345678909'
                     },
                     phone: enhancedAdditionalInfo.payer.phone,
-                    address: enhancedAdditionalInfo.payer.address
+                    // CORRIGIDO: address structure conforme doc oficial (só 3 campos)
+                    address: {
+                        street_name: "Rua da Prosperidade",
+                        street_number: "123", 
+                        zip_code: "01234-567"
+                    }
                 },
                 
                 // Referência externa
                 external_reference: paymentUID,
                 
-                // ADDITIONAL_INFO - Estrutura COMPLETA
+                // ADDITIONAL_INFO - Estrutura CORRIGIDA
                 additional_info: enhancedAdditionalInfo,
                 
                 // URLs e notificações
