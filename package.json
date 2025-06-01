@@ -5,13 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node --no-deprecation server.js",
-    "start:clean": "npm ci --omit=dev && node --no-deprecation server.js",
     "dev": "nodemon --no-deprecation server.js",
     "test": "echo \"No tests yet\" && exit 0",
     "health": "curl http://localhost:3000/health",
-    "status": "curl http://localhost:3000/status",
-    "build": "npm ci --omit=dev",
-    "postinstall": "echo \"✅ Dependências instaladas com sucesso\""
+    "status": "curl http://localhost:3000/status"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -51,8 +48,5 @@
     "url": "https://github.com/renatoambrosi/quizback/issues"
   },
   "homepage": "https://www.suellenseragi.com.br",
-  "license": "MIT",
-  "config": {
-    "unsafe-perm": true
-  }
+  "license": "MIT"
 }
