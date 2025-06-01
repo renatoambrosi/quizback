@@ -1,3 +1,17 @@
+// ============================================
+// SUPRIMIR WARNINGS DESNECESSÁRIOS
+// ============================================
+
+// Suprimir warning específico do punycode (não afeta funcionalidade)
+process.removeAllListeners('warning');
+process.on('warning', (warning) => {
+  // Permitir apenas warnings críticos, ignorar punycode deprecation
+  if (!warning.message.includes('punycode') && 
+      !warning.message.includes('DEP0040')) {
+    console.warn('⚠️  Warning:', warning.message);
+  }
+});
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -102,7 +116,8 @@ app.get('/status', (req, res) => {
       enhanced_logging: true,
       webhook_processing: true,
       polling_support: true,
-      anti_fraud_protection: true
+      anti_fraud_protection: true,
+      warnings_suppressed: true
     }
   });
 });
@@ -232,7 +247,7 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Log de erros não capturados
+// Log de erros não capturados (mas sem warnings desnecessários)
 process.on('uncaughtException', (error) => {
   console.error('💥 UNCAUGHT EXCEPTION:', error);
   process.exit(1);
@@ -244,7 +259,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // ============================================
-// INICIALIZAÇÃO DO SERVIDOR MELHORADA
+// INICIALIZAÇÃO DO SERVIDOR MELHORADA (SEM WARNINGS)
 // ============================================
 
 app.listen(PORT, () => {
@@ -252,7 +267,7 @@ app.listen(PORT, () => {
   console.log(`
   🚀 ============================================
      BACKEND TESTE DE PROSPERIDADE ONLINE!
-     VERSION 2.0 - ENHANCED WITH MP IMPROVEMENTS
+     VERSION 2.0 - ENHANCED (WARNINGS SUPRIMIDOS)
   ============================================
   📅 Iniciado em: ${timestamp}
   🌐 Servidor: http://localhost:${PORT}
@@ -281,6 +296,7 @@ app.listen(PORT, () => {
   ✅ Validações de dados obrigatórios
   ✅ Tratamento de erros melhorado
   ✅ Status em tempo real
+  ✅ Warnings desnecessários suprimidos
   ============================================
   `);
   
@@ -303,7 +319,7 @@ app.listen(PORT, () => {
   } else {
     console.log(`
   ✅ TODAS AS CONFIGURAÇÕES CRÍTICAS ESTÃO OK!
-  🚀 Sistema pronto para produção.
+  🚀 Sistema pronto para produção (SEM WARNINGS).
     `);
   }
 });
