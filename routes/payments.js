@@ -4,10 +4,10 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 // ============================================
-// CONFIGURAÇÃO CHECKOUT BRICKS OFICIAL MP
+// CONFIGURAÇÃO OFICIAL MERCADO PAGO
 // ============================================
 
-console.log('🧱 Inicializando CHECKOUT BRICKS - Documentação Oficial MP');
+console.log('🧱 Inicializando Checkout Bricks - Configuração Oficial MP');
 
 const client = new MercadoPagoConfig({
     accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
@@ -20,46 +20,49 @@ const payment = new Payment(client);
 const merchantOrder = new MerchantOrder(client);
 
 // ============================================
-// FUNÇÕES CONFORME DOCUMENTAÇÃO OFICIAL MP
+// FUNÇÕES UTILITÁRIAS CONFORME DOC OFICIAL
 // ============================================
 
-// ESTRUTURA ADDITIONAL_INFO EXATA CONFORME DOC CODIGO DE REQUISIÇÃO.txt
-function createOfficialAdditionalInfo(paymentData, userUID) {
+// Função para criar additional_info conforme documentação oficial MP
+function createAdditionalInfo(paymentData, userUID) {
     const now = new Date().toISOString();
     
-    // ESTRUTURA EXATA conforme DOC CODIGO DE REQUISIÇÃO.txt
     return {
+        // ITEMS - Estrutura conforme doc oficial MP
         items: [
             {
-                id: 'MLB2907679857', // Conforme exemplo oficial
-                title: 'Point Mini',
-                description: 'Point product for card payments via Bluetooth.',
-                picture_url: 'https://http2.mlstatic.com/resources/frontend/statics/growth-sellers-landings/device-mlb-point-i_medium2x.png',
-                category_id: 'electronics',
+                id: "teste-prosperidade-001",
+                title: "Teste de Prosperidade",
+                description: "Acesso ao resultado personalizado do teste de prosperidade",
+                category_id: "services",
                 quantity: 1,
-                unit_price: 58 // Conforme doc oficial
+                unit_price: 10,
+                picture_url: "https://www.suellenseragi.com.br/logo.png"
             }
         ],
+        
+        // PAYER - Estrutura conforme doc oficial MP
         payer: {
-            // ESTRUTURA EXATA conforme DOC CODIGO DE REQUISIÇÃO.txt
-            first_name: 'Test',
-            last_name: 'Test',
+            first_name: paymentData.additional_info?.payer?.first_name || "Cliente",
+            last_name: paymentData.additional_info?.payer?.last_name || "Teste",
             phone: {
-                area_code: '11',
-                number: '987654321'
+                area_code: paymentData.additional_info?.payer?.phone?.area_code || "11",
+                number: paymentData.additional_info?.payer?.phone?.number || "999999999"
             },
-            address: {
-                street_number: null // Conforme doc oficial
-            }
+            registration_date: paymentData.additional_info?.payer?.registration_date || now,
+            is_prime_user: paymentData.additional_info?.payer?.is_prime_user || "0",
+            is_first_purchase_online: paymentData.additional_info?.payer?.is_first_purchase_online || "1",
+            authentication_type: paymentData.additional_info?.payer?.authentication_type || "Native web"
         },
+        
+        // SHIPMENTS - Estrutura conforme doc oficial MP
         shipments: {
-            // ESTRUTURA EXATA conforme DOC CODIGO DE REQUISIÇÃO.txt
             receiver_address: {
-                zip_code: '12312-123',
-                state_name: 'Rio de Janeiro',
-                city_name: 'Buzios',
-                street_name: 'Av das Nacoes Unidas',
-                street_number: 3003
+                zip_code: "01234-567",
+                state_name: "São Paulo",
+                city_name: "São Paulo",
+                street_name: "Entrega Digital",
+                street_number: "0"
             }
         }
     };
@@ -79,7 +82,7 @@ function logPayment(action, paymentId, status, details = {}) {
     `);
 }
 
-// Validação de dados obrigatórios conforme documentação
+// Função para validar dados obrigatórios
 function validatePaymentData(paymentData) {
     const errors = [];
     
@@ -99,15 +102,15 @@ function validatePaymentData(paymentData) {
 }
 
 // ============================================
-// ENDPOINT PRINCIPAL - ESTRUTURA OFICIAL MP
+// ENDPOINT PRINCIPAL - CONFORME DOC OFICIAL MP
 // ============================================
 
 router.post('/process_payment', async (req, res) => {
     try {
-        console.log('🧱 PROCESSANDO PAGAMENTO - Estrutura Oficial MP');
+        console.log('🧱 PROCESSANDO PAGAMENTO - Checkout Bricks Oficial');
         logPayment('RECEBIDO', 'pending', 'INICIANDO', req.body);
 
-        // Validação conforme necessário
+        // Validação conforme documentação
         const validationErrors = validatePaymentData(req.body);
         if (validationErrors.length > 0) {
             logPayment('VALIDAÇÃO', 'none', 'ERRO', { errors: validationErrors });
@@ -131,46 +134,48 @@ router.post('/process_payment', async (req, res) => {
         } = req.body;
 
         const paymentUID = uid || uuidv4();
-        const officialAdditionalInfo = createOfficialAdditionalInfo(req.body, paymentUID);
+        const enhancedAdditionalInfo = createAdditionalInfo(req.body, paymentUID);
 
         // ============================================
-        // PAGAMENTO CARTÃO - ESTRUTURA CONFORME DOC CODIGO DE REQUISIÇÃO.txt
+        // PAGAMENTO CARTÃO - CONFORME DOC OFICIAL MP
         // ============================================
 
         if (payment_method_id && token) {
             console.log('💳 PROCESSANDO CARTÃO - Estrutura Oficial MP');
 
-            // ESTRUTURA EXATA conforme DOC CODIGO DE REQUISIÇÃO.txt
             const paymentData = {
-                additional_info: officialAdditionalInfo,
-                application_fee: null,
-                binary_mode: false,
-                campaign_id: null,
-                capture: false,
-                coupon_amount: null,
-                description: 'Payment for product',
-                differential_pricing_id: null,
-                external_reference: paymentUID, // Usar UID como referência
+                transaction_amount: Number(transaction_amount),
+                token: token,
+                description: description || 'Teste de Prosperidade - Resultado Personalizado',
                 installments: Number(installments) || 1,
-                metadata: null,
+                payment_method_id: payment_method_id,
+                issuer_id: Number(issuer_id),
+                
+                // PAYER conforme documentação oficial
                 payer: {
-                    entity_type: 'individual',
-                    type: 'customer',
                     email: payer.email,
                     identification: {
                         type: payer.identification?.type || 'CPF',
-                        number: payer.identification?.number || '95749019047'
+                        number: payer.identification?.number || '12345678909'
                     }
                 },
-                payment_method_id: payment_method_id,
-                token: token,
-                transaction_amount: Number(transaction_amount)
+                
+                external_reference: paymentUID,
+                additional_info: enhancedAdditionalInfo,
+                notification_url: `${process.env.BASE_URL}/api/webhook`,
+                statement_descriptor: 'TESTE PROSPERIDADE',
+                binary_mode: false,
+                
+                metadata: {
+                    user_uid: paymentUID,
+                    integration_type: 'checkout_bricks',
+                    version: '2.0'
+                }
             };
 
             logPayment('CARTÃO_ENVIANDO', 'pending', 'PROCESSANDO', {
                 transaction_amount: paymentData.transaction_amount,
                 payment_method_id: paymentData.payment_method_id,
-                token_preview: token.substring(0, 10) + '...',
                 external_reference: paymentUID
             });
 
@@ -186,66 +191,59 @@ router.post('/process_payment', async (req, res) => {
                 payment_method_id: result.payment_method_id
             });
 
-            // RESPOSTA CONFORME DOC RESPOSTA DE EXEMPLO.txt
             const response = {
                 id: result.id,
-                date_created: result.date_created,
-                date_approved: result.date_approved,
-                date_last_updated: result.date_last_updated,
-                money_release_date: result.money_release_date,
-                issuer_id: result.issuer_id,
-                payment_method_id: result.payment_method_id,
-                payment_type_id: result.payment_type_id,
                 status: result.status,
                 status_detail: result.status_detail,
-                currency_id: result.currency_id,
-                description: result.description,
-                external_reference: result.external_reference,
+                payment_method_id: result.payment_method_id,
+                payment_type_id: result.payment_type_id,
                 transaction_amount: result.transaction_amount,
-                uid: paymentUID
+                uid: paymentUID,
+                date_created: result.date_created,
+                date_approved: result.date_approved
             };
 
-            // Adicionar dados específicos conforme status
             if (result.status === 'approved') {
                 response.redirect_url = `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`;
                 logPayment('CARTÃO_APROVADO', result.id, 'SUCCESS', { uid: paymentUID });
-            } else if (result.status === 'rejected') {
-                // IMPORTANTE: Para rejeições, manter dados para permitir nova tentativa
-                logPayment('CARTÃO_REJEITADO', result.id, 'REJECTED', { 
-                    status_detail: result.status_detail,
-                    uid: paymentUID,
-                    retry_available: true
-                });
             }
 
             return res.status(201).json(response);
         }
 
         // ============================================
-        // PAGAMENTO PIX - ESTRUTURA OFICIAL MP + MERCHANT ORDER
+        // PAGAMENTO PIX - CONFORME DOC OFICIAL MP
         // ============================================
 
         if (payment_method_id === 'pix') {
             console.log('🟢 PROCESSANDO PIX - Estrutura Oficial MP');
 
-            // ESTRUTURA CONFORME DOC Backend.txt para PIX
             const pixData = {
                 transaction_amount: Number(transaction_amount),
-                description: description || 'Payment for product',
+                description: description || 'Teste de Prosperidade - Resultado Personalizado',
                 payment_method_id: 'pix',
+                
+                // PAYER conforme documentação oficial
                 payer: {
                     email: payer.email,
                     identification: {
                         type: 'CPF',
-                        number: '95749019047' // Conforme doc oficial
+                        number: '12345678909'
                     }
                 },
+                
                 external_reference: paymentUID,
-                // ADDITIONAL_INFO conforme estrutura oficial
-                additional_info: officialAdditionalInfo,
+                additional_info: enhancedAdditionalInfo,
                 notification_url: `${process.env.BASE_URL}/api/webhook`,
-                // Data de expiração para PIX (importante para merchant_order)
-                date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+                
+                // Data de expiração conforme doc oficial (30 minutos)
+                date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+                
+                metadata: {
+                    user_uid: paymentUID,
+                    integration_type: 'checkout_bricks_pix',
+                    version: '2.0'
+                }
             };
 
             logPayment('PIX_ENVIANDO', 'pending', 'PROCESSANDO', {
@@ -263,10 +261,9 @@ router.post('/process_payment', async (req, res) => {
 
             logPayment('PIX_CRIADO', pixResult.id, pixResult.status, {
                 status_detail: pixResult.status_detail,
-                has_qr_code: !!pixResult.point_of_interaction?.transaction_data
+                point_of_interaction: !!pixResult.point_of_interaction
             });
 
-            // RESPOSTA CONFORME DOC RESPOSTA DE EXEMPLO.txt para PIX
             const response = {
                 id: pixResult.id,
                 status: pixResult.status,
@@ -274,13 +271,12 @@ router.post('/process_payment', async (req, res) => {
                 payment_method_id: pixResult.payment_method_id,
                 payment_type_id: pixResult.payment_type_id,
                 transaction_amount: pixResult.transaction_amount,
-                external_reference: pixResult.external_reference,
+                uid: paymentUID,
                 date_created: pixResult.date_created,
-                date_of_expiration: pixResult.date_of_expiration,
-                uid: paymentUID
+                date_of_expiration: pixResult.date_of_expiration
             };
 
-            // DADOS PIX conforme DOC RESPOSTA DE EXEMPLO.txt
+            // Dados do PIX conforme doc oficial
             if (pixResult.point_of_interaction?.transaction_data) {
                 response.qr_code = pixResult.point_of_interaction.transaction_data.qr_code;
                 response.qr_code_base64 = pixResult.point_of_interaction.transaction_data.qr_code_base64;
@@ -302,13 +298,13 @@ router.post('/process_payment', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ ERRO NO PROCESSAMENTO:', error);
+        console.error('❌ ERRO CHECKOUT BRICKS:', error);
         logPayment('ERRO_GERAL', 'error', 'FALHA', {
             message: error.message,
             stack: error.stack?.substring(0, 500)
         });
 
-        // Tratamento específico para erros MP conforme documentação
+        // Tratamento específico para erros MP conforme doc oficial
         if (error.cause && error.cause.length > 0) {
             const mpError = error.cause[0];
             
@@ -334,31 +330,29 @@ router.post('/process_payment', async (req, res) => {
 });
 
 // ============================================
-// WEBHOOK MELHORADO - MERCHANT ORDER OFICIAL MP
+// WEBHOOK CONFORME DOC OFICIAL MP
 // ============================================
 
 router.post('/webhook', async (req, res) => {
     try {
-        console.log('🔔 WEBHOOK OFICIAL RECEBIDO:', req.body);
+        console.log('🔔 WEBHOOK OFICIAL MP RECEBIDO:', req.body);
         logPayment('WEBHOOK_RECEBIDO', req.body.data?.id || 'unknown', req.body.action, req.body);
 
-        // Responder imediatamente conforme padrão MP
+        // Responder imediatamente (padrão MP oficial)
         res.status(200).json({ 
             received: true,
-            source: 'checkout_bricks_official',
+            source: 'checkout_bricks_oficial',
             timestamp: new Date().toISOString()
         });
 
         const { action, data, type } = req.body;
 
-        // ============================================
-        // PROCESSAR PAYMENT NOTIFICATIONS
-        // ============================================
+        // Processar notificações de pagamento conforme doc oficial
         if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
             try {
                 const paymentDetails = await payment.get({ id: data.id });
                 
-                logPayment('WEBHOOK_PAYMENT_CONSULTADO', data.id, paymentDetails.status, {
+                logPayment('WEBHOOK_CONSULTADO', data.id, paymentDetails.status, {
                     status_detail: paymentDetails.status_detail,
                     external_reference: paymentDetails.external_reference,
                     payment_method_id: paymentDetails.payment_method_id
@@ -373,69 +367,32 @@ router.post('/webhook', async (req, res) => {
                     });
                 }
 
-                // Log específico para cartão aprovado após rejeição
+                // Log específico para cartão aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
-                    logPayment('CARTÃO_APROVADO_APÓS_RETRY', data.id, 'SUCCESS', {
+                    logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
                         installments: paymentDetails.installments
                     });
                 }
 
-                // Log para rejeições (importante para análise)
-                if (paymentDetails.status === 'rejected') {
-                    logPayment('PAGAMENTO_REJEITADO_WEBHOOK', data.id, 'REJECTED', {
-                        status_detail: paymentDetails.status_detail,
-                        payment_method_id: paymentDetails.payment_method_id,
-                        external_reference: paymentDetails.external_reference
-                    });
-                }
-
             } catch (error) {
-                console.error('❌ Erro ao buscar payment no webhook:', error);
-                logPayment('WEBHOOK_PAYMENT_ERRO', data.id, 'ERRO_CONSULTA', {
+                console.error('❌ Erro ao buscar detalhes do pagamento no webhook:', error);
+                logPayment('WEBHOOK_ERRO', data.id, 'ERRO_CONSULTA', {
                     error: error.message
                 });
             }
         }
 
-        // ============================================
-        // PROCESSAR MERCHANT ORDER - IMPORTANTE PARA PIX E REJEIÇÕES
-        // ============================================
+        // Processar notificações de merchant_order conforme doc oficial
         if (type === 'merchant_order' && data && data.id) {
             try {
                 const orderDetails = await merchantOrder.get({ merchantOrderId: data.id });
                 
-                logPayment('MERCHANT_ORDER_OFICIAL', data.id, orderDetails.order_status, {
+                logPayment('MERCHANT_ORDER', data.id, orderDetails.status, {
                     order_status: orderDetails.order_status,
-                    payments: orderDetails.payments?.length || 0,
-                    total_amount: orderDetails.total_amount
+                    payments: orderDetails.payments?.length || 0
                 });
-
-                // IMPORTANTE: Verificar se merchant_order está "closed"
-                // Conforme documentação: "Mantenha a transação aberta até receber o status: closed"
-                if (orderDetails.order_status === 'closed') {
-                    logPayment('MERCHANT_ORDER_CLOSED', data.id, 'TRANSACTION_COMPLETED', {
-                        payments: orderDetails.payments,
-                        external_reference: orderDetails.external_reference
-                    });
-                } else if (orderDetails.order_status === 'opened') {
-                    // Transação ainda aberta - permitir múltiplas tentativas
-                    logPayment('MERCHANT_ORDER_OPEN', data.id, 'ALLOWING_RETRIES', {
-                        order_status: orderDetails.order_status,
-                        note: 'Transação mantida aberta para múltiplas tentativas'
-                    });
-                }
-
-                // Processar pagamentos dentro da order
-                if (orderDetails.payments && orderDetails.payments.length > 0) {
-                    for (const orderPayment of orderDetails.payments) {
-                        logPayment('MERCHANT_ORDER_PAYMENT', orderPayment.id, orderPayment.status, {
-                            transaction_amount: orderPayment.transaction_amount,
-                            status_detail: orderPayment.status_detail
-                        });
-                    }
-                }
 
             } catch (error) {
                 console.error('❌ Erro ao buscar merchant order:', error);
@@ -461,13 +418,13 @@ router.post('/webhook', async (req, res) => {
 });
 
 // ============================================
-// CONSULTAR PAGAMENTO PARA POLLING
+// CONSULTAR PAGAMENTO PARA POLLING - CONFORME DOC OFICIAL
 // ============================================
 
 router.get('/payment/:id', async (req, res) => {
     try {
         const paymentId = req.params.id;
-        console.log(`🔍 CONSULTANDO PAGAMENTO: ${paymentId}`);
+        console.log(`🔍 CONSULTANDO PAGAMENTO OFICIAL: ${paymentId}`);
         
         const paymentDetails = await payment.get({ id: paymentId });
         
@@ -476,18 +433,16 @@ router.get('/payment/:id', async (req, res) => {
             payment_method_id: paymentDetails.payment_method_id
         });
         
-        // RESPOSTA CONFORME ESTRUTURA OFICIAL MP
         const response = {
             id: paymentDetails.id,
             status: paymentDetails.status,
             status_detail: paymentDetails.status_detail,
             transaction_amount: paymentDetails.transaction_amount,
-            external_reference: paymentDetails.external_reference,
+            uid: paymentDetails.external_reference,
             payment_method_id: paymentDetails.payment_method_id,
             payment_type_id: paymentDetails.payment_type_id,
             date_created: paymentDetails.date_created,
             date_approved: paymentDetails.date_approved,
-            uid: paymentDetails.external_reference,
             source: 'polling_consultation'
         };
 
@@ -515,66 +470,14 @@ router.get('/payment/:id', async (req, res) => {
 });
 
 // ============================================
-// ESTORNOS CONFORME DOCUMENTAÇÃO OFICIAL
-// ============================================
-
-router.post('/refund/:paymentId', async (req, res) => {
-    try {
-        const { paymentId } = req.params;
-        const { amount, reason } = req.body;
-
-        console.log(`💰 PROCESSANDO ESTORNO: ${paymentId}`);
-        logPayment('ESTORNO_INICIADO', paymentId, 'PROCESSING', { amount, reason });
-
-        // Buscar detalhes do pagamento original
-        const originalPayment = await payment.get({ id: paymentId });
-        
-        if (originalPayment.status !== 'approved') {
-            return res.status(400).json({
-                error: 'Pagamento não pode ser estornado',
-                message: 'Apenas pagamentos aprovados podem ser estornados',
-                status: originalPayment.status
-            });
-        }
-
-        // Estrutura para estorno conforme documentação
-        const refundData = {
-            payment_id: parseInt(paymentId),
-            amount: amount ? Number(amount) : undefined, // undefined = estorno total
-            reason: reason || 'Solicitação do cliente'
-        };
-
-        logPayment('ESTORNO_CONFIGURADO', paymentId, 'CONFIGURED', refundData);
-
-        res.status(200).json({
-            message: 'Funcionalidade de estorno configurada conforme documentação oficial',
-            payment_id: paymentId,
-            refund_data: refundData,
-            note: 'Estornos parciais e totais implementados conforme MP'
-        });
-
-    } catch (error) {
-        console.error('❌ Erro no estorno:', error);
-        logPayment('ESTORNO_ERRO', req.params.paymentId, 'ERROR', {
-            message: error.message
-        });
-        
-        res.status(500).json({
-            error: 'Erro ao processar estorno',
-            message: error.message
-        });
-    }
-});
-
-// ============================================
-// CALLBACK URL CONFORME DOCUMENTAÇÃO
+// CALLBACK URL CONFORME DOC OFICIAL
 // ============================================
 
 router.get('/callback', (req, res) => {
-    console.log('🔄 CALLBACK RECEBIDO:', req.query);
+    console.log('🔄 CALLBACK OFICIAL RECEBIDO:', req.query);
     logPayment('CALLBACK', req.query.payment_id || 'unknown', 'CALLBACK', req.query);
     
-    // Redirecionar conforme documentação oficial
+    // Redirecionar para resultado com UID se disponível
     if (req.query.external_reference) {
         res.redirect(`https://www.suellenseragi.com.br/resultado?uid=${req.query.external_reference}`);
     } else {
