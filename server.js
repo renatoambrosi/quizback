@@ -1,7 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // ============================================
@@ -15,22 +13,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================================
-// MIDDLEWARES CONFORME BOAS PRÁTICAS MP
+// MIDDLEWARES BÁSICOS (SEM DEPENDÊNCIAS EXTRAS)
 // ============================================
-
-// Helmet para segurança conforme recomendação MP
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://sdk.mercadopago.com"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.mercadopago.com"],
-            frameSrc: ["'self'", "https://www.mercadopago.com"],
-        },
-    },
-}));
 
 // CORS configurado para Checkout Bricks
 app.use(cors({
@@ -50,28 +34,6 @@ app.use(cors({
     ],
     credentials: true
 }));
-
-// Rate limiting para APIs
-const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // Máximo 100 requests por IP por janela
-    message: {
-        error: 'Muitas requisições',
-        message: 'Tente novamente em alguns minutos'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// Rate limiting específico para pagamentos
-const paymentLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000, // 5 minutos
-    max: 10, // Máximo 10 pagamentos por IP por janela
-    message: {
-        error: 'Limite de pagamentos excedido',
-        message: 'Aguarde alguns minutos antes de tentar novamente'
-    }
-});
 
 // Middlewares básicos
 app.use(express.json({ limit: '10mb' }));
@@ -134,7 +96,7 @@ app.get('/health', (req, res) => {
         service: 'Checkout Bricks - Mercado Pago',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        version: '2.0-oficial-mp'
+        version: '2.0-oficial-mp-simplificado'
     });
 });
 
@@ -145,7 +107,7 @@ app.get('/status', (req, res) => {
     res.status(200).json({
         status: 'OK',
         service: 'Checkout Bricks Oficial MP',
-        version: '2.0-oficial-mp',
+        version: '2.0-oficial-mp-simplificado',
         environment: process.env.NODE_ENV || 'development',
         timestamp: new Date().toISOString(),
         uptime: Math.floor(process.uptime()),
@@ -203,20 +165,14 @@ app.get('/api/environment', (req, res) => {
             webhook_secret: !!process.env.MERCADOPAGO_WEBHOOK_SECRET
         },
         cors_configured: true,
-        rate_limiting: true,
+        simplified_version: true,
         timestamp: new Date().toISOString()
     });
 });
 
 // ============================================
-// APLICAR RATE LIMITING E ROTAS PAGAMENTO
+// APLICAR ROTAS PAGAMENTO (SEM RATE LIMITING)
 // ============================================
-
-// Rate limiting para APIs
-app.use('/api', apiLimiter);
-
-// Rate limiting específico para pagamentos
-app.use('/api/process_payment', paymentLimiter);
 
 // Rotas de pagamento oficial MP
 app.use('/api', paymentsRouter);
@@ -228,7 +184,7 @@ app.use('/api', paymentsRouter);
 app.get('/', (req, res) => {
     res.status(200).json({
         message: 'Backend Checkout Bricks - Mercado Pago Oficial',
-        version: '2.0-oficial-mp',
+        version: '2.0-oficial-mp-simplificado',
         documentation: 'Baseado na documentação oficial MP',
         status: 'active',
         endpoints: {
