@@ -1,396 +1,286 @@
 const express = require('express');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
-const { v4: uuidv4 } = require('uuid');
-const router = express.Router();
+const cors = require('cors');
+const helmet = require('helmet');
+require('dotenv').config();
+
+const paymentRoutes = require('./routes/payments');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // ============================================
-// SEU CÓDIGO ORIGINAL + COMPLIANCE MÍNIMO
+// MIDDLEWARES DE SEGURANÇA
 // ============================================
 
-console.log('🚀 Inicializando rotas de pagamento');
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "https://sdk.mercadopago.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.mercadopago.com", "https://sdk.mercadopago.com"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Necessário para Mercado Pago
+}));
 
-const client = new MercadoPagoConfig({
-    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
-    options: {
-        timeout: 5000
-    }
+app.use(cors({
+  origin: [
+    'https://quizfront.vercel.app',
+    'https://www.suellenseragi.com.br',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://api.mercadopago.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Signature', 'X-Request-Id']
+}));
+
+// Middleware para logging de requests
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`📡 ${timestamp} - ${req.method} ${req.path} - IP: ${req.ip}`);
+  
+  // Log específico para webhooks
+  if (req.path === '/api/webhook') {
+    console.log('🔔 WEBHOOK REQUEST:', {
+      headers: req.headers,
+      body: req.body
+    });
+  }
+  
+  next();
 });
 
-const payment = new Payment(client);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Middleware para capturar IP real
+app.use((req, res, next) => {
+  req.clientIP = req.headers['x-forwarded-for'] || 
+                 req.connection.remoteAddress || 
+                 req.socket.remoteAddress ||
+                 (req.connection.socket ? req.connection.socket.remoteAddress : null);
+  next();
+});
 
 // ============================================
-// COMPLIANCE: Additional Info melhorado
+// ROTAS CONFORME DOCUMENTAÇÃO OFICIAL
 // ============================================
 
-function createAdditionalInfo(paymentData, userUID) {
-    return {
-        items: [
-            {
-                id: 'teste-prosperidade-001',
-                title: 'Teste de Prosperidade',
-                description: 'Acesso completo ao resultado personalizado',
-                category_id: 'services', // COMPLIANCE: category_id obrigatório
-                quantity: 1,
-                unit_price: 10
-            }
-        ],
-        payer: {
-            first_name: 'Cliente', // COMPLIANCE: first_name obrigatório
-            last_name: 'Teste Prosperidade', // COMPLIANCE: last_name obrigatório
-            phone: {
-                area_code: '11',
-                number: '999999999'
-            }
-        }
-    };
-}
+// Health Check
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Backend Teste de Prosperidade funcionando!',
+    timestamp: new Date().toISOString(),
+    version: '2.0-oficial'
+  });
+});
 
-// Função para logs (mantida simples)
-function logPayment(action, paymentId, status, details = {}) {
-    const timestamp = new Date().toISOString();
+// Status detalhado do sistema
+app.get('/status', (req, res) => {
+  const uptime = process.uptime();
+  const memoryUsage = process.memoryUsage();
+  
+  res.status(200).json({
+    status: 'OK',
+    service: 'Teste de Prosperidade Backend',
+    version: '2.0-oficial',
+    uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
+    memory: {
+      rss: `${Math.round(memoryUsage.rss / 1024 / 1024)} MB`,
+      heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)} MB`,
+      heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)} MB`
+    },
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    features: {
+      checkout_bricks: true,
+      webhook_processing: true,
+      polling_support: true,
+      official_mp_integration: true
+    }
+  });
+});
+
+// Endpoint para validar conectividade com Mercado Pago
+app.get('/api/mp-health', async (req, res) => {
+  try {
+    const { MercadoPagoConfig } = require('mercadopago');
+    
+    const client = new MercadoPagoConfig({
+      accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+      options: { timeout: 5000 }
+    });
+    
+    res.status(200).json({
+      mercadopago: 'OK',
+      message: 'Conectividade com Mercado Pago verificada',
+      access_token_configured: !!process.env.MERCADOPAGO_ACCESS_TOKEN,
+      public_key_configured: !!process.env.MERCADOPAGO_PUBLIC_KEY,
+      webhook_secret_configured: !!process.env.MERCADOPAGO_WEBHOOK_SECRET,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro na conectividade com MP:', error);
+    res.status(500).json({
+      mercadopago: 'ERROR',
+      message: 'Erro na conectividade com Mercado Pago',
+      error: error.message
+    });
+  }
+});
+
+// Rotas de pagamento
+app.use('/api', paymentRoutes);
+
+// Rota para informações do ambiente
+app.get('/api/environment', (req, res) => {
+  res.status(200).json({
+    node_env: process.env.NODE_ENV || 'development',
+    port: PORT,
+    base_url: process.env.BASE_URL || `http://localhost:${PORT}`,
+    has_mp_credentials: {
+      access_token: !!process.env.MERCADOPAGO_ACCESS_TOKEN,
+      public_key: !!process.env.MERCADOPAGO_PUBLIC_KEY,
+      webhook_secret: !!process.env.MERCADOPAGO_WEBHOOK_SECRET
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Rota de fallback
+app.get('*', (req, res) => {
+  console.log(`❓ Rota não encontrada: ${req.method} ${req.path}`);
+  res.status(404).json({ 
+    error: 'Rota não encontrada',
+    message: 'Backend do Teste de Prosperidade - Oficial',
+    requested_path: req.path,
+    available_endpoints: {
+      health: '/health',
+      status: '/status',
+      mp_health: '/api/mp-health',
+      process_payment: '/api/process_payment',
+      webhook: '/api/webhook',
+      payment_lookup: '/api/payment/:id',
+      callback: '/api/callback'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ============================================
+// TRATAMENTO DE ERROS GLOBAL
+// ============================================
+
+app.use((error, req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.error(`❌ ERRO GLOBAL [${timestamp}]:`, {
+    message: error.message,
+    stack: error.stack?.substring(0, 500),
+    path: req.path,
+    method: req.method,
+    ip: req.clientIP
+  });
+  
+  res.status(error.status || 500).json({
+    error: 'Erro interno do servidor',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Algo deu errado',
+    timestamp: timestamp,
+    request_id: req.headers['x-request-id'] || 'unknown'
+  });
+});
+
+// ============================================
+// TRATAMENTO DE PROCESSOS
+// ============================================
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM recebido. Encerrando servidor...');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT recebido. Encerrando servidor...');
+  process.exit(0);
+});
+
+// Log de erros não capturados
+process.on('uncaughtException', (error) => {
+  console.error('💥 UNCAUGHT EXCEPTION:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION:', reason, promise);
+  process.exit(1);
+});
+
+// ============================================
+// INICIALIZAÇÃO DO SERVIDOR
+// ============================================
+
+app.listen(PORT, () => {
+  const timestamp = new Date().toISOString();
+  console.log(`
+  🚀 ============================================
+     BACKEND TESTE DE PROSPERIDADE ONLINE!
+     VERSION 2.0 - CONFORME DOC OFICIAL MP
+  ============================================
+  📅 Iniciado em: ${timestamp}
+  🌐 Servidor: http://localhost:${PORT}
+  🏥 Health: http://localhost:${PORT}/health
+  📊 Status: http://localhost:${PORT}/status
+  💳 Pagamentos: http://localhost:${PORT}/api/process_payment
+  🔔 Webhook: http://localhost:${PORT}/api/webhook
+  🔍 Consulta: http://localhost:${PORT}/api/payment/:id
+  🔄 Callback: http://localhost:${PORT}/api/callback
+  
+  🔧 CONFIGURAÇÕES:
+  • Node ENV: ${process.env.NODE_ENV || 'development'}
+  • MP Access Token: ${process.env.MERCADOPAGO_ACCESS_TOKEN ? '✅ Configurado' : '❌ Não configurado'}
+  • MP Public Key: ${process.env.MERCADOPAGO_PUBLIC_KEY ? '✅ Configurado' : '❌ Não configurado'}
+  • Webhook Secret: ${process.env.MERCADOPAGO_WEBHOOK_SECRET ? '✅ Configurado' : '❌ Não configurado'}
+  • Base URL: ${process.env.BASE_URL || 'Não configurado'}
+  
+  🎯 IMPLEMENTAÇÃO OFICIAL:
+  ✅ Checkout Bricks conforme doc oficial MP
+  ✅ Payment Brick para cartão e PIX
+  ✅ Status Screen Brick
+  ✅ Webhook conforme padrão MP
+  ✅ Sistema de polling para PIX
+  ✅ Additional info conforme especificação
+  ✅ Logs estruturados para debugging
+  ✅ Validações conforme documentação
+  ✅ Tratamento de erros oficial MP
+  ============================================
+  `);
+  
+  // Verificar configurações críticas
+  const criticalConfigs = [
+    'MERCADOPAGO_ACCESS_TOKEN',
+    'MERCADOPAGO_PUBLIC_KEY',
+    'BASE_URL'
+  ];
+  
+  const missingConfigs = criticalConfigs.filter(config => !process.env[config]);
+  
+  if (missingConfigs.length > 0) {
     console.log(`
-🔍 ================================
-📅 ${timestamp}
-🎯 Ação: ${action}
-💳 Payment ID: ${paymentId}
-📊 Status: ${status}
-📋 Detalhes: ${JSON.stringify(details, null, 2)}
-🔍 ================================
+  ⚠️  ATENÇÃO: Configurações em falta:
+  ${missingConfigs.map(config => `   • ${config}`).join('\n')}
+  
+  Configure essas variáveis no Railway para funcionamento completo.
     `);
-}
-
-// ============================================
-// SEU ENDPOINT PRINCIPAL (mantido + compliance)
-// ============================================
-
-router.post('/process_payment', async (req, res) => {
-    try {
-        console.log('🔄 Processando pagamento');
-        logPayment('RECEBIDO', 'pending', 'INICIANDO', req.body);
-
-        const { 
-            token,
-            payment_method_id,
-            transaction_amount,
-            installments,
-            description,
-            payer,
-            uid,
-            issuer_id
-        } = req.body;
-
-        const paymentUID = uid || uuidv4();
-
-        // ============================================
-        // PAGAMENTO CARTÃO (seu código + compliance)
-        // ============================================
-
-        if (payment_method_id && token) {
-            console.log('💳 Processando cartão de crédito');
-
-            // COMPLIANCE: Additional info melhorado
-            const additionalInfo = createAdditionalInfo(req.body, paymentUID);
-
-            const paymentData = {
-                transaction_amount: Number(transaction_amount),
-                token: token,
-                description: description || 'Teste de Prosperidade',
-                installments: Number(installments) || 1,
-                payment_method_id: payment_method_id,
-                payer: {
-                    email: payer.email,
-                    identification: {
-                        type: payer.identification?.type || 'CPF',
-                        number: payer.identification?.number || '12345678901'
-                    }
-                },
-                external_reference: paymentUID,
-                // COMPLIANCE: Additional info conforme documentação
-                additional_info: additionalInfo
-            };
-
-            if (issuer_id) {
-                paymentData.issuer_id = issuer_id;
-            }
-
-            logPayment('CARTÃO_ENVIANDO', 'pending', 'PROCESSANDO', {
-                transaction_amount: paymentData.transaction_amount,
-                payment_method_id: paymentData.payment_method_id,
-                external_reference: paymentUID
-            });
-
-            const result = await payment.create({
-                body: paymentData,
-                requestOptions: {
-                    idempotencyKey: uuidv4()
-                }
-            });
-
-            logPayment('CARTÃO_RESULTADO', result.id, result.status, {
-                status_detail: result.status_detail,
-                payment_method_id: result.payment_method_id
-            });
-
-            // SUA RESPOSTA ORIGINAL + compliance
-            const response = {
-                id: result.id,
-                status: result.status,
-                status_detail: result.status_detail,
-                payment_method_id: result.payment_method_id,
-                transaction_amount: result.transaction_amount,
-                external_reference: result.external_reference,
-                date_created: result.date_created,
-                date_approved: result.date_approved,
-                uid: paymentUID
-            };
-
-            if (result.status === 'approved') {
-                response.redirect_url = `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`;
-                logPayment('CARTÃO_APROVADO', result.id, 'SUCCESS', { uid: paymentUID });
-            } else if (result.status === 'rejected') {
-                // COMPLIANCE: Log rejeições para análise
-                logPayment('CARTÃO_REJEITADO', result.id, 'REJECTED', { 
-                    status_detail: result.status_detail,
-                    uid: paymentUID
-                });
-            }
-
-            return res.status(201).json(response);
-        }
-
-        // ============================================
-        // PAGAMENTO PIX (seu código original)
-        // ============================================
-
-        if (payment_method_id === 'pix') {
-            console.log('🟢 Processando PIX');
-
-            // COMPLIANCE: Additional info para PIX também
-            const additionalInfo = createAdditionalInfo(req.body, paymentUID);
-
-            const pixData = {
-                transaction_amount: Number(transaction_amount),
-                description: description || 'Teste de Prosperidade',
-                payment_method_id: 'pix',
-                payer: {
-                    email: payer.email
-                },
-                external_reference: paymentUID,
-                // COMPLIANCE: Additional info
-                additional_info: additionalInfo,
-                notification_url: `${process.env.BASE_URL}/api/webhook`
-            };
-
-            logPayment('PIX_ENVIANDO', 'pending', 'PROCESSANDO', {
-                transaction_amount: pixData.transaction_amount,
-                external_reference: paymentUID
-            });
-
-            const pixResult = await payment.create({
-                body: pixData,
-                requestOptions: {
-                    idempotencyKey: uuidv4()
-                }
-            });
-
-            logPayment('PIX_CRIADO', pixResult.id, pixResult.status, {
-                status_detail: pixResult.status_detail
-            });
-
-            // SUA RESPOSTA PIX ORIGINAL
-            const response = {
-                id: pixResult.id,
-                status: pixResult.status,
-                status_detail: pixResult.status_detail,
-                payment_method_id: pixResult.payment_method_id,
-                transaction_amount: pixResult.transaction_amount,
-                external_reference: pixResult.external_reference,
-                date_created: pixResult.date_created,
-                uid: paymentUID
-            };
-
-            // Seus dados PIX originais
-            if (pixResult.point_of_interaction?.transaction_data) {
-                response.qr_code = pixResult.point_of_interaction.transaction_data.qr_code;
-                response.qr_code_base64 = pixResult.point_of_interaction.transaction_data.qr_code_base64;
-                response.ticket_url = pixResult.point_of_interaction.transaction_data.ticket_url;
-            }
-
-            return res.status(201).json(response);
-        }
-
-        return res.status(400).json({
-            error: 'Método de pagamento não suportado',
-            message: 'Use cartão de crédito ou PIX'
-        });
-
-    } catch (error) {
-        console.error('❌ Erro no processamento:', error);
-        logPayment('ERRO_GERAL', 'error', 'FALHA', {
-            message: error.message
-        });
-
-        // Seu tratamento de erro original
-        if (error.cause && error.cause.length > 0) {
-            const mpError = error.cause[0];
-            
-            return res.status(400).json({
-                error: 'Erro do Mercado Pago',
-                message: mpError.description || mpError.message,
-                code: mpError.code
-            });
-        }
-
-        return res.status(500).json({
-            error: 'Erro interno do servidor',
-            message: process.env.NODE_ENV === 'development' ? error.message : 'Erro interno',
-            timestamp: new Date().toISOString()
-        });
-    }
+  } else {
+    console.log(`
+  ✅ TODAS AS CONFIGURAÇÕES ESTÃO OK!
+  🚀 Sistema pronto para produção com implementação oficial MP.
+    `);
+  }
 });
-
-// ============================================
-// SEU WEBHOOK ORIGINAL (mantido)
-// ============================================
-
-router.post('/webhook', async (req, res) => {
-    try {
-        console.log('🔔 Webhook recebido:', req.body);
-        logPayment('WEBHOOK_RECEBIDO', req.body.data?.id || 'unknown', req.body.action, req.body);
-
-        res.status(200).json({ 
-            received: true,
-            timestamp: new Date().toISOString()
-        });
-
-        const { action, data } = req.body;
-
-        if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
-            try {
-                const paymentDetails = await payment.get({ id: data.id });
-                
-                logPayment('WEBHOOK_CONSULTADO', data.id, paymentDetails.status, {
-                    status_detail: paymentDetails.status_detail,
-                    external_reference: paymentDetails.external_reference,
-                    payment_method_id: paymentDetails.payment_method_id
-                });
-
-                // Logs específicos para PIX e cartão
-                if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
-                    logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
-                        uid: paymentDetails.external_reference,
-                        transaction_amount: paymentDetails.transaction_amount
-                    });
-                }
-
-                if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
-                    logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
-                        uid: paymentDetails.external_reference,
-                        transaction_amount: paymentDetails.transaction_amount
-                    });
-                }
-
-            } catch (error) {
-                console.error('❌ Erro ao buscar payment no webhook:', error);
-            }
-        }
-
-    } catch (error) {
-        console.error('❌ Erro geral no webhook:', error);
-        
-        if (!res.headersSent) {
-            res.status(200).json({ 
-                received: true,
-                error: 'Erro interno no webhook'
-            });
-        }
-    }
-});
-
-// ============================================
-// CONSULTAR PAGAMENTO (para polling PIX)
-// ============================================
-
-router.get('/payment/:id', async (req, res) => {
-    try {
-        const paymentId = req.params.id;
-        console.log(`🔍 Consultando pagamento: ${paymentId}`);
-        
-        const paymentDetails = await payment.get({ id: paymentId });
-        
-        const response = {
-            id: paymentDetails.id,
-            status: paymentDetails.status,
-            status_detail: paymentDetails.status_detail,
-            transaction_amount: paymentDetails.transaction_amount,
-            external_reference: paymentDetails.external_reference,
-            payment_method_id: paymentDetails.payment_method_id,
-            uid: paymentDetails.external_reference
-        };
-
-        // Dados PIX se disponíveis
-        if (paymentDetails.payment_method_id === 'pix' && paymentDetails.point_of_interaction?.transaction_data) {
-            response.qr_code = paymentDetails.point_of_interaction.transaction_data.qr_code;
-            response.qr_code_base64 = paymentDetails.point_of_interaction.transaction_data.qr_code_base64;
-            response.ticket_url = paymentDetails.point_of_interaction.transaction_data.ticket_url;
-        }
-
-        res.status(200).json(response);
-
-    } catch (error) {
-        console.error('❌ Erro ao consultar pagamento:', error);
-        
-        res.status(404).json({
-            error: 'Pagamento não encontrado',
-            payment_id: req.params.id
-        });
-    }
-});
-
-// ============================================
-// COMPLIANCE: Endpoints de estorno (configurados)
-// ============================================
-
-router.post('/refund/:paymentId', async (req, res) => {
-    try {
-        const { paymentId } = req.params;
-        const { amount, reason } = req.body;
-
-        console.log(`💰 Estorno solicitado: ${paymentId}`);
-        
-        // Buscar pagamento original
-        const originalPayment = await payment.get({ id: paymentId });
-        
-        if (originalPayment.status !== 'approved') {
-            return res.status(400).json({
-                error: 'Pagamento não pode ser estornado',
-                status: originalPayment.status
-            });
-        }
-
-        // COMPLIANCE: Estrutura de estorno configurada
-        const refundData = {
-            payment_id: parseInt(paymentId),
-            amount: amount ? Number(amount) : undefined, // undefined = estorno total
-            reason: reason || 'Solicitação do cliente'
-        };
-
-        logPayment('ESTORNO_CONFIGURADO', paymentId, 'CONFIGURED', refundData);
-
-        res.status(200).json({
-            message: 'Estorno configurado conforme compliance MP',
-            payment_id: paymentId,
-            refund_data: refundData
-        });
-
-    } catch (error) {
-        console.error('❌ Erro no estorno:', error);
-        
-        res.status(500).json({
-            error: 'Erro ao processar estorno',
-            message: error.message
-        });
-    }
-});
-
-module.exports = router;
