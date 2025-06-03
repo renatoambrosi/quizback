@@ -164,7 +164,8 @@ router.post('/process_payment', async (req, res) => {
                 additional_info: enhancedAdditionalInfo,
                 notification_url: `${process.env.BASE_URL}/api/webhook`,
                 statement_descriptor: 'TESTE PROSPERIDADE',
-                binary_mode: false,
+                processing_mode: "aggregator"
+                binary_mode: true,
                 
                 metadata: {
                     user_uid: paymentUID,
