@@ -163,7 +163,7 @@ class SimpleEmailSender {
                     
                     <div class="highlight-box">
                         <h3>🎯 Seu resultado está pronto!</h3>
-                        <p>Clique no botão abaixo para descobrir seu perfil de prosperidade personalizado.</p>
+                        <p>Clique no botão abaixo para descobrir seu resultado do Teste de Prosperidade.</p>
                     </div>
                     
                     <a href="${resultUrl}" class="cta-button">
