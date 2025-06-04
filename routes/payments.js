@@ -1,6 +1,7 @@
 const express = require('express');
 const { MercadoPagoConfig, Payment, MerchantOrder } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
+const SibApiV3Sdk = require('@getbrevo/brevo');
 const router = express.Router();
 
 // ============================================
