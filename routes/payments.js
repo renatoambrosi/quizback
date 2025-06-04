@@ -14,12 +14,12 @@ async function sendPaymentConfirmationEmail(paymentData) {
         console.log(`🎯 UID: ${paymentData.external_reference}`);
         console.log(`💰 Valor: R$ ${paymentData.transaction_amount}`);
         
-        const SibApiV3Sdk = require('@getbrevo/brevo');
-        let defaultClient = SibApiV3Sdk.ApiClient.instance;
-        let apiKey = defaultClient.authentications['api-key'];
+        const SibApiV3Sdk = require('sib-api-v3-sdk');  // ← CORRETO
+        var defaultClient = SibApiV3Sdk.ApiClient.instance;
+        var apiKey = defaultClient.authentications['api-key'];
         apiKey.apiKey = process.env.BREVO_API_KEY;
-        
-        let tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
+
+        var apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
         
         const emailData = {
             sender: {
