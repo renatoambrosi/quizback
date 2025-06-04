@@ -31,7 +31,7 @@ class SimpleEmailSender {
                     email: customerEmail,
                     name: 'Cliente'
                 }],
-                subject: '🎉 PIX Aprovado - Acesse seu Resultado de Prosperidade!',
+                subject: '🎉 Acesse seu Resultado do Teste de Prosperidade!',
                 htmlContent: this.createSuccessTemplate(uid, paymentAmount),
                 tags: ['pix-aprovado', 'resultado-liberado']
             };
@@ -127,6 +127,7 @@ class SimpleEmailSender {
                 }
                 .cta-button:hover { 
                     background: #40a9ff; 
+                    color: white !important;
                 }
                 .footer { 
                     background: #f8f9fa; 
