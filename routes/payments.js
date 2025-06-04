@@ -2,6 +2,8 @@ const express = require('express');
 const { MercadoPagoConfig, Payment, MerchantOrder } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
+const SimpleEmailSender = require('../email-sender');
+const emailSender = new SimpleEmailSender();
 
 // ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
@@ -360,6 +362,8 @@ router.post('/webhook', async (req, res) => {
 
                 // Log específico para PIX aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
+                await emailSender.sendPixSuccessEmail(paymentDetails.payer?.email, paymentDetails.external_reference);
+    
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
