@@ -1,7 +1,7 @@
 const express = require('express');
 const { MercadoPagoConfig, Payment, MerchantOrder } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
-const SibApiV3Sdk = require('@getbrevo/brevo');
+// const SibApiV3Sdk = require('@getbrevo/brevo');  // ← TEMPORARIAMENTE DESABILITADO
 const router = express.Router();
 
 // ============================================
@@ -18,13 +18,13 @@ const client = new MercadoPagoConfig({
 });
 
 // ============================================
-// CONFIGURAÇÃO BREVO
+// CONFIGURAÇÃO BREVO - TEMPORARIAMENTE DESABILITADA
 // ============================================
 
-let defaultClient = SibApiV3Sdk.ApiClient.instance;
-let apiKey = defaultClient.authentications['api-key'];
-apiKey.apiKey = process.env.BREVO_API_KEY;
-const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
+// let defaultClient = SibApiV3Sdk.ApiClient.instance;
+// let apiKey = defaultClient.authentications['api-key'];
+// apiKey.apiKey = process.env.BREVO_API_KEY;
+// const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 const payment = new Payment(client);
 const merchantOrder = new MerchantOrder(client);
@@ -78,36 +78,14 @@ function createAdditionalInfo(paymentData, userUID) {
     };
 }
 
-// Função para enviar email de confirmação
+// Função para enviar email de confirmação - TEMPORARIAMENTE DESABILITADA
 async function sendPaymentConfirmationEmail(paymentData) {
     try {
-        const emailData = {
-            sender: {
-                name: "Suellen Seragi",
-                email: "contato@suellenseragi.com.br"
-            },
-            to: [{
-                email: paymentData.payer.email,
-                name: paymentData.payer.first_name || "Cliente"
-            }],
-            subject: "✅ Seu Teste de Prosperidade está pronto!",
-            htmlContent: `
-                <h2>Parabéns! Seu pagamento foi confirmado! 🎉</h2>
-                <p>Olá ${paymentData.payer.first_name || 'Cliente'},</p>
-                <p>Seu pagamento de R$ ${paymentData.transaction_amount.toFixed(2)} foi aprovado com sucesso!</p>
-                <p><strong>Acesse seu resultado personalizado:</strong></p>
-                <p><a href="https://www.suellenseragi.com.br/resultado?uid=${paymentData.external_reference}" 
-                   style="background: #009ee3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                   👉 Ver Meu Resultado Agora
-                </a></p>
-                <hr>
-                <p><small>ID do Pagamento: ${paymentData.id}</small></p>
-                <p><small>Obrigada pela confiança!<br>Suellen Seragi</small></p>
-            `
-        };
-
-        await tranEmailApi.sendTransacEmail(emailData);
-        console.log(`✅ Email enviado para: ${paymentData.payer.email}`);
+        console.log(`📧 Email seria enviado para: ${paymentData.payer.email}`);
+        console.log(`🎯 UID: ${paymentData.external_reference}`);
+        console.log(`💰 Valor: R$ ${paymentData.transaction_amount}`);
+        
+        // TODO: Implementar envio de email
         
     } catch (error) {
         console.error('❌ Erro ao enviar email:', error);
@@ -412,7 +390,7 @@ router.post('/webhook', async (req, res) => {
                         date_approved: paymentDetails.date_approved
                     });
                     
-                    // ENVIAR EMAIL DE CONFIRMAÇÃO PIX
+                    // EMAIL TEMPORARIAMENTE DESABILITADO
                     await sendPaymentConfirmationEmail(paymentDetails);
                 }
 
