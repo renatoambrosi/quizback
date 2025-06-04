@@ -4,50 +4,58 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 // ============================================
-// CONFIGURAÇÃO BREVO - TESTE SIMPLES
+// CONFIGURAÇÃO BREVO - CONFORME DOC OFICIAL
 // ============================================
 
-// Função para enviar email via Brevo
+// Função para enviar email via Brevo - SINTAXE OFICIAL
 async function sendPaymentConfirmationEmail(paymentData) {
     try {
         console.log(`📧 Enviando email para: ${paymentData.payer.email}`);
         console.log(`🎯 UID: ${paymentData.external_reference}`);
         console.log(`💰 Valor: R$ ${paymentData.transaction_amount}`);
         
-        const SibApiV3Sdk = require('sib-api-v3-sdk');  // ← CORRETO
+        // CONFORME DOCUMENTAÇÃO OFICIAL BREVO
+        var SibApiV3Sdk = require('sib-api-v3-sdk');
         var defaultClient = SibApiV3Sdk.ApiClient.instance;
+
+        // Configure API key authorization: api-key
         var apiKey = defaultClient.authentications['api-key'];
         apiKey.apiKey = process.env.BREVO_API_KEY;
 
         var apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
         
-        const emailData = {
-            sender: {
-                name: "Suellen Seragi",
-                email: "contato@suellenseragi.com.br"
-            },
-            to: [{
-                email: paymentData.payer.email,
-                name: paymentData.payer.first_name || "Cliente"
-            }],
-            subject: "✅ Seu Teste de Prosperidade está pronto!",
-            htmlContent: `
-                <h2>Parabéns! Seu pagamento foi confirmado! 🎉</h2>
-                <p>Olá ${paymentData.payer.first_name || 'Cliente'},</p>
-                <p>Seu pagamento de R$ ${paymentData.transaction_amount.toFixed(2)} foi aprovado com sucesso!</p>
-                <p><strong>Acesse seu resultado personalizado:</strong></p>
-                <p><a href="https://www.suellenseragi.com.br/resultado?uid=${paymentData.external_reference}" 
-                   style="background: #009ee3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                   👉 Ver Meu Resultado Agora
-                </a></p>
-                <hr>
-                <p><small>ID do Pagamento: ${paymentData.id}</small></p>
-                <p><small>Obrigada pela confiança!<br>Suellen Seragi</small></p>
-            `
+        // Dados do email conforme doc oficial
+        var sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+        
+        sendSmtpEmail.sender = {
+            name: "Suellen Seragi",
+            email: "contato@suellenseragi.com.br"
         };
+        
+        sendSmtpEmail.to = [{
+            email: paymentData.payer.email,
+            name: paymentData.payer.first_name || "Cliente"
+        }];
+        
+        sendSmtpEmail.subject = "✅ Seu Teste de Prosperidade está pronto!";
+        
+        sendSmtpEmail.htmlContent = `
+            <h2>Parabéns! Seu pagamento foi confirmado! 🎉</h2>
+            <p>Olá ${paymentData.payer.first_name || 'Cliente'},</p>
+            <p>Seu pagamento de R$ ${paymentData.transaction_amount.toFixed(2)} foi aprovado com sucesso!</p>
+            <p><strong>Acesse seu resultado personalizado:</strong></p>
+            <p><a href="https://www.suellenseragi.com.br/resultado?uid=${paymentData.external_reference}" 
+               style="background: #009ee3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+               👉 Ver Meu Resultado Agora
+            </a></p>
+            <hr>
+            <p><small>ID do Pagamento: ${paymentData.id}</small></p>
+            <p><small>Obrigada pela confiança!<br>Suellen Seragi</small></p>
+        `;
 
-        await tranEmailApi.sendTransacEmail(emailData);
-        console.log(`✅ Email enviado com sucesso para: ${paymentData.payer.email}`);
+        // Enviar email conforme doc oficial
+        const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
+        console.log(`✅ Email enviado com sucesso! MessageId: ${data.messageId}`);
         
     } catch (error) {
         console.error('❌ Erro ao enviar email:', error);
