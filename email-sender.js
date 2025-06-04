@@ -166,8 +166,8 @@ class SimpleEmailSender {
                         <p>Clique no botão abaixo para descobrir seu resultado do Teste de Prosperidade.</p>
                     </div>
                     
-                    <a href="${resultUrl}" class="cta-button">
-                        ✨ Ver Meu Resultado Agora
+                    <a href="${resultUrl}" class="cta-button" style="color: white !important; text-decoration: none !important;">
+                        ✨ Ver Meu Resultado Agora ✨
                     </a>
                     
                     <p style="margin-top: 30px; font-size: 14px; color: #666;">
