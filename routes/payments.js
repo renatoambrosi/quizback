@@ -4,66 +4,6 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 
 // ============================================
-// CONFIGURAÇÃO BREVO - CONFORME DOC OFICIAL
-// ============================================
-
-// Função para enviar email via Brevo - SINTAXE OFICIAL
-async function sendPaymentConfirmationEmail(paymentData) {
-    try {
-        console.log(`📧 Enviando email para: ${paymentData.payer.email}`);
-        console.log(`🎯 UID: ${paymentData.external_reference}`);
-        console.log(`💰 Valor: R$ ${paymentData.transaction_amount}`);
-        
-        // CONFORME DOCUMENTAÇÃO OFICIAL BREVO
-        var SibApiV3Sdk = require('sib-api-v3-sdk');
-        var defaultClient = SibApiV3Sdk.ApiClient.instance;
-
-        // Configure API key authorization: api-key
-        var apiKey = defaultClient.authentications['api-key'];
-        apiKey.apiKey = process.env.BREVO_API_KEY;
-
-        var apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
-        
-        // Dados do email conforme doc oficial
-        var sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
-        
-        sendSmtpEmail.sender = {
-            name: "Suellen Seragi",
-            email: "contato@suellenseragi.com.br"
-        };
-        
-        sendSmtpEmail.to = [{
-            email: paymentData.payer.email,
-            name: paymentData.payer.first_name || "Cliente"
-        }];
-        
-        sendSmtpEmail.subject = "✅ Seu Teste de Prosperidade está pronto!";
-        
-        sendSmtpEmail.htmlContent = `
-            <h2>Parabéns! Seu pagamento foi confirmado! 🎉</h2>
-            <p>Olá ${paymentData.payer.first_name || 'Cliente'},</p>
-            <p>Seu pagamento de R$ ${paymentData.transaction_amount.toFixed(2)} foi aprovado com sucesso!</p>
-            <p><strong>Acesse seu resultado personalizado:</strong></p>
-            <p><a href="https://www.suellenseragi.com.br/resultado?uid=${paymentData.external_reference}" 
-               style="background: #009ee3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-               👉 Ver Meu Resultado Agora
-            </a></p>
-            <hr>
-            <p><small>ID do Pagamento: ${paymentData.id}</small></p>
-            <p><small>Obrigada pela confiança!<br>Suellen Seragi</small></p>
-        `;
-
-        // Enviar email conforme doc oficial
-        const data = await apiInstance.sendTransacEmail(sendSmtpEmail);
-        console.log(`✅ Email enviado com sucesso! MessageId: ${data.messageId}`);
-        
-    } catch (error) {
-        console.error('❌ Erro ao enviar email:', error);
-        console.error('❌ Detalhes:', error.message);
-    }
-}
-
-// ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
 // ============================================
 
@@ -78,6 +18,24 @@ const client = new MercadoPagoConfig({
 
 const payment = new Payment(client);
 const merchantOrder = new MerchantOrder(client);
+
+// ============================================
+// BREVO LOGGER (OPCIONAL - SÓ SE CONFIGURADO)
+// ============================================
+
+let brevoLogger = null;
+try {
+    if (process.env.BREVO_API_KEY) {
+        const BrevoLogger = require('../brevo-logger');
+        brevoLogger = new BrevoLogger();
+        console.log('📧 Brevo Logger inicializado');
+    } else {
+        console.log('📧 Brevo não configurado - usando apenas logs console');
+    }
+} catch (error) {
+    console.log('📧 Brevo indisponível - usando apenas logs console');
+    brevoLogger = null;
+}
 
 // ============================================
 // FUNÇÕES UTILITÁRIAS CONFORME DOC OFICIAL
@@ -161,6 +119,17 @@ function validatePaymentData(paymentData) {
     return errors;
 }
 
+// Função auxiliar para logs Brevo (opcional)
+async function logToBrevo(method, ...args) {
+    if (brevoLogger && typeof brevoLogger[method] === 'function') {
+        try {
+            await brevoLogger[method](...args);
+        } catch (error) {
+            console.log(`📧 Erro no log Brevo (${method}):`, error.message);
+        }
+    }
+}
+
 // ============================================
 // ENDPOINT PRINCIPAL - CONFORME DOC OFICIAL MP
 // ============================================
@@ -170,10 +139,20 @@ router.post('/process_payment', async (req, res) => {
         console.log('🧱 PROCESSANDO PAGAMENTO - Checkout Bricks Oficial');
         logPayment('RECEBIDO', 'pending', 'INICIANDO', req.body);
 
+        // Log opcional no Brevo
+        await logToBrevo('logPaymentStarted', req.body);
+
         // Validação conforme documentação
         const validationErrors = validatePaymentData(req.body);
         if (validationErrors.length > 0) {
             logPayment('VALIDAÇÃO', 'none', 'ERRO', { errors: validationErrors });
+            
+            // Log erro no Brevo
+            await logToBrevo('logPaymentError', 'validation', new Error('Dados inválidos'), {
+                errors: validationErrors,
+                received_data: req.body
+            });
+            
             return res.status(400).json({
                 error: 'Dados inválidos',
                 message: validationErrors.join(', '),
@@ -195,6 +174,87 @@ router.post('/process_payment', async (req, res) => {
 
         const paymentUID = uid || uuidv4();
         const enhancedAdditionalInfo = createAdditionalInfo(req.body, paymentUID);
+
+        // ============================================
+        // PAGAMENTO CARTÃO - CONFORME DOC OFICIAL MP
+        // ============================================
+
+        if (payment_method_id && token) {
+            console.log('💳 PROCESSANDO CARTÃO - Estrutura Oficial MP');
+
+            const paymentData = {
+                transaction_amount: Number(transaction_amount),
+                token: token,
+                description: description || 'Teste de Prosperidade - Resultado Personalizado',
+                installments: Number(installments) || 1,
+                payment_method_id: payment_method_id,
+                issuer_id: Number(issuer_id),
+                
+                // PAYER conforme documentação oficial
+                payer: {
+                    email: payer.email,
+                    identification: {
+                        type: payer.identification?.type || 'CPF',
+                        number: payer.identification?.number || '12345678909'
+                    }
+                },
+                
+                external_reference: paymentUID,
+                additional_info: enhancedAdditionalInfo,
+                notification_url: `${process.env.BASE_URL}/api/webhook`,
+                statement_descriptor: 'TESTE PROSPERIDADE',
+                binary_mode: false,
+                
+                metadata: {
+                    user_uid: paymentUID,
+                    integration_type: 'checkout_bricks',
+                    version: '2.0'
+                }
+            };
+
+            logPayment('CARTÃO_ENVIANDO', 'pending', 'PROCESSANDO', {
+                transaction_amount: paymentData.transaction_amount,
+                payment_method_id: paymentData.payment_method_id,
+                external_reference: paymentUID
+            });
+
+            const result = await payment.create({
+                body: paymentData,
+                requestOptions: {
+                    idempotencyKey: uuidv4()
+                }
+            });
+
+            logPayment('CARTÃO_RESULTADO', result.id, result.status, {
+                status_detail: result.status_detail,
+                payment_method_id: result.payment_method_id
+            });
+
+            // Logs Brevo para cartão
+            if (result.status === 'approved') {
+                await logToBrevo('logPaymentApproved', result.id, result);
+                await logToBrevo('sendSuccessNotificationToCustomer', result, payer.email);
+            }
+
+            const response = {
+                id: result.id,
+                status: result.status,
+                status_detail: result.status_detail,
+                payment_method_id: result.payment_method_id,
+                payment_type_id: result.payment_type_id,
+                transaction_amount: result.transaction_amount,
+                uid: paymentUID,
+                date_created: result.date_created,
+                date_approved: result.date_approved
+            };
+
+            if (result.status === 'approved') {
+                response.redirect_url = `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`;
+                logPayment('CARTÃO_APROVADO', result.id, 'SUCCESS', { uid: paymentUID });
+            }
+
+            return res.status(201).json(response);
+        }
 
         // ============================================
         // PAGAMENTO PIX - CONFORME DOC OFICIAL MP
@@ -249,6 +309,9 @@ router.post('/process_payment', async (req, res) => {
                 point_of_interaction: !!pixResult.point_of_interaction
             });
 
+            // Log PIX no Brevo
+            await logToBrevo('logPixCreated', pixResult.id, pixResult);
+
             const response = {
                 id: pixResult.id,
                 status: pixResult.status,
@@ -279,13 +342,19 @@ router.post('/process_payment', async (req, res) => {
 
         return res.status(400).json({
             error: 'Método de pagamento não suportado',
-            message: 'Use PIX'
+            message: 'Use cartão de crédito ou PIX'
         });
 
     } catch (error) {
         console.error('❌ ERRO CHECKOUT BRICKS:', error);
         logPayment('ERRO_GERAL', 'error', 'FALHA', {
             message: error.message,
+            stack: error.stack?.substring(0, 500)
+        });
+
+        // Log erro no Brevo
+        await logToBrevo('logPaymentError', 'general_error', error, {
+            request_body: req.body,
             stack: error.stack?.substring(0, 500)
         });
 
@@ -323,6 +392,9 @@ router.post('/webhook', async (req, res) => {
         console.log('🔔 WEBHOOK OFICIAL MP RECEBIDO:', req.body);
         logPayment('WEBHOOK_RECEBIDO', req.body.data?.id || 'unknown', req.body.action, req.body);
 
+        // Log webhook no Brevo
+        await logToBrevo('logWebhookReceived', req.body);
+
         // Responder imediatamente (padrão MP oficial)
         res.status(200).json({ 
             received: true,
@@ -345,21 +417,45 @@ router.post('/webhook', async (req, res) => {
 
                 // Log específico para PIX aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
-                    logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
+                    await logToBrevo('logPixApproved', data.id, {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
                         date_approved: paymentDetails.date_approved,
-                        payer_email: paymentDetails.payer.email
+                        via: 'webhook'
                     });
+
+                    // Notificar cliente sobre PIX aprovado
+                    if (paymentDetails.payer?.email) {
+                        await logToBrevo('sendSuccessNotificationToCustomer', paymentDetails, paymentDetails.payer.email);
+                    }
                     
-                    // ENVIAR EMAIL VIA BREVO
-                    await sendPaymentConfirmationEmail(paymentDetails);
+                    logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
+                        uid: paymentDetails.external_reference,
+                        transaction_amount: paymentDetails.transaction_amount,
+                        date_approved: paymentDetails.date_approved
+                    });
+                }
+
+                // Log específico para cartão aprovado
+                if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
+                    await logToBrevo('logPaymentApproved', data.id, paymentDetails);
+                    
+                    logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
+                        uid: paymentDetails.external_reference,
+                        transaction_amount: paymentDetails.transaction_amount,
+                        installments: paymentDetails.installments
+                    });
                 }
 
             } catch (error) {
                 console.error('❌ Erro ao buscar detalhes do pagamento no webhook:', error);
                 logPayment('WEBHOOK_ERRO', data.id, 'ERRO_CONSULTA', {
                     error: error.message
+                });
+                
+                await logToBrevo('logPaymentError', 'webhook_payment_lookup', error, {
+                    payment_id: data.id,
+                    webhook_action: action
                 });
             }
         }
@@ -387,6 +483,12 @@ router.post('/webhook', async (req, res) => {
         logPayment('WEBHOOK_ERRO_GERAL', 'error', 'FALHA', {
             message: error.message
         });
+
+        // Log erro crítico no Brevo
+        await logToBrevo('logCriticalSystemError', error, {
+            webhook_body: req.body,
+            source: 'webhook_handler'
+        });
         
         if (!res.headersSent) {
             res.status(200).json({ 
@@ -411,6 +513,13 @@ router.get('/payment/:id', async (req, res) => {
         logPayment('CONSULTA_POLLING', paymentId, paymentDetails.status, {
             status_detail: paymentDetails.status_detail,
             payment_method_id: paymentDetails.payment_method_id
+        });
+
+        // Log polling no Brevo
+        await logToBrevo('log', 'INFO', 'PAYMENT_LOOKUP', paymentId, paymentDetails.status, {
+            status_detail: paymentDetails.status_detail,
+            payment_method_id: paymentDetails.payment_method_id,
+            via: 'polling'
         });
         
         const response = {
@@ -453,7 +562,7 @@ router.get('/payment/:id', async (req, res) => {
 // CALLBACK URL CONFORME DOC OFICIAL
 // ============================================
 
-router.get('/callback', (req, res) => {
+router.get('/callback', async (req, res) => {
     console.log('🔄 CALLBACK OFICIAL RECEBIDO:', req.query);
     logPayment('CALLBACK', req.query.payment_id || 'unknown', 'CALLBACK', req.query);
     
@@ -462,6 +571,30 @@ router.get('/callback', (req, res) => {
         res.redirect(`https://www.suellenseragi.com.br/resultado?uid=${req.query.external_reference}`);
     } else {
         res.redirect('https://quizfront.vercel.app');
+    }
+});
+
+// ============================================
+// HEALTH CHECK DO BREVO (SE DISPONÍVEL)
+// ============================================
+
+router.get('/brevo-health', async (req, res) => {
+    if (!brevoLogger) {
+        return res.status(200).json({
+            status: 'NOT_CONFIGURED',
+            message: 'Brevo não configurado - sistema funcionando apenas com logs console'
+        });
+    }
+
+    try {
+        const healthStatus = await brevoLogger.healthCheck();
+        res.status(healthStatus.status === 'OK' ? 200 : 500).json(healthStatus);
+    } catch (error) {
+        res.status(500).json({
+            status: 'ERROR',
+            message: 'Erro ao verificar Brevo',
+            error: error.message
+        });
     }
 });
 
