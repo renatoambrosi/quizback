@@ -11,15 +11,20 @@ const router = express.Router();
 console.log('🧱 Inicializando Checkout Bricks - Configuração Oficial MP');
 
 const client = new MercadoPagoConfig({
-    const brevoClient = SibApiV3Sdk.ApiClient.instance;
-    const apiKey = brevoClient.authentications['api-key'];
-    apiKey.apiKey = process.env.BREVO_API_KEY;
-    const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
     accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
     options: {
         timeout: 5000
     }
 });
+
+// ============================================
+// CONFIGURAÇÃO BREVO
+// ============================================
+
+let defaultClient = SibApiV3Sdk.ApiClient.instance;
+let apiKey = defaultClient.authentications['api-key'];
+apiKey.apiKey = process.env.BREVO_API_KEY;
+const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 const payment = new Payment(client);
 const merchantOrder = new MerchantOrder(client);
@@ -72,6 +77,7 @@ function createAdditionalInfo(paymentData, userUID) {
         }
     };
 }
+
 // Função para enviar email de confirmação
 async function sendPaymentConfirmationEmail(paymentData) {
     try {
@@ -107,6 +113,7 @@ async function sendPaymentConfirmationEmail(paymentData) {
         console.error('❌ Erro ao enviar email:', error);
     }
 }
+
 // Função para logs estruturados
 function logPayment(action, paymentId, status, details = {}) {
     const timestamp = new Date().toISOString();
@@ -404,10 +411,11 @@ router.post('/webhook', async (req, res) => {
                         transaction_amount: paymentDetails.transaction_amount,
                         date_approved: paymentDetails.date_approved
                     });
-    
-                // ENVIAR EMAIL DE CONFIRMAÇÃO
-                await sendPaymentConfirmationEmail(paymentDetails);
-          }
+                    
+                    // ENVIAR EMAIL DE CONFIRMAÇÃO PIX
+                    await sendPaymentConfirmationEmail(paymentDetails);
+                }
+
                 // Log específico para cartão aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
                     logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
