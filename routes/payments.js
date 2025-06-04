@@ -20,24 +20,6 @@ const payment = new Payment(client);
 const merchantOrder = new MerchantOrder(client);
 
 // ============================================
-// BREVO LOGGER (OPCIONAL - SÓ SE CONFIGURADO)
-// ============================================
-
-let brevoLogger = null;
-try {
-    if (process.env.BREVO_API_KEY) {
-        const BrevoLogger = require('../brevo-logger');
-        brevoLogger = new BrevoLogger();
-        console.log('📧 Brevo Logger inicializado');
-    } else {
-        console.log('📧 Brevo não configurado - usando apenas logs console');
-    }
-} catch (error) {
-    console.log('📧 Brevo indisponível - usando apenas logs console');
-    brevoLogger = null;
-}
-
-// ============================================
 // FUNÇÕES UTILITÁRIAS CONFORME DOC OFICIAL
 // ============================================
 
@@ -119,17 +101,6 @@ function validatePaymentData(paymentData) {
     return errors;
 }
 
-// Função auxiliar para logs Brevo (opcional)
-async function logToBrevo(method, ...args) {
-    if (brevoLogger && typeof brevoLogger[method] === 'function') {
-        try {
-            await brevoLogger[method](...args);
-        } catch (error) {
-            console.log(`📧 Erro no log Brevo (${method}):`, error.message);
-        }
-    }
-}
-
 // ============================================
 // ENDPOINT PRINCIPAL - CONFORME DOC OFICIAL MP
 // ============================================
@@ -139,20 +110,10 @@ router.post('/process_payment', async (req, res) => {
         console.log('🧱 PROCESSANDO PAGAMENTO - Checkout Bricks Oficial');
         logPayment('RECEBIDO', 'pending', 'INICIANDO', req.body);
 
-        // Log opcional no Brevo
-        await logToBrevo('logPaymentStarted', req.body);
-
         // Validação conforme documentação
         const validationErrors = validatePaymentData(req.body);
         if (validationErrors.length > 0) {
             logPayment('VALIDAÇÃO', 'none', 'ERRO', { errors: validationErrors });
-            
-            // Log erro no Brevo
-            await logToBrevo('logPaymentError', 'validation', new Error('Dados inválidos'), {
-                errors: validationErrors,
-                received_data: req.body
-            });
-            
             return res.status(400).json({
                 error: 'Dados inválidos',
                 message: validationErrors.join(', '),
@@ -230,12 +191,6 @@ router.post('/process_payment', async (req, res) => {
                 payment_method_id: result.payment_method_id
             });
 
-            // Logs Brevo para cartão
-            if (result.status === 'approved') {
-                await logToBrevo('logPaymentApproved', result.id, result);
-                await logToBrevo('sendSuccessNotificationToCustomer', result, payer.email);
-            }
-
             const response = {
                 id: result.id,
                 status: result.status,
@@ -309,9 +264,6 @@ router.post('/process_payment', async (req, res) => {
                 point_of_interaction: !!pixResult.point_of_interaction
             });
 
-            // Log PIX no Brevo
-            await logToBrevo('logPixCreated', pixResult.id, pixResult);
-
             const response = {
                 id: pixResult.id,
                 status: pixResult.status,
@@ -352,12 +304,6 @@ router.post('/process_payment', async (req, res) => {
             stack: error.stack?.substring(0, 500)
         });
 
-        // Log erro no Brevo
-        await logToBrevo('logPaymentError', 'general_error', error, {
-            request_body: req.body,
-            stack: error.stack?.substring(0, 500)
-        });
-
         // Tratamento específico para erros MP conforme doc oficial
         if (error.cause && error.cause.length > 0) {
             const mpError = error.cause[0];
@@ -392,9 +338,6 @@ router.post('/webhook', async (req, res) => {
         console.log('🔔 WEBHOOK OFICIAL MP RECEBIDO:', req.body);
         logPayment('WEBHOOK_RECEBIDO', req.body.data?.id || 'unknown', req.body.action, req.body);
 
-        // Log webhook no Brevo
-        await logToBrevo('logWebhookReceived', req.body);
-
         // Responder imediatamente (padrão MP oficial)
         res.status(200).json({ 
             received: true,
@@ -417,18 +360,6 @@ router.post('/webhook', async (req, res) => {
 
                 // Log específico para PIX aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
-                    await logToBrevo('logPixApproved', data.id, {
-                        uid: paymentDetails.external_reference,
-                        transaction_amount: paymentDetails.transaction_amount,
-                        date_approved: paymentDetails.date_approved,
-                        via: 'webhook'
-                    });
-
-                    // Notificar cliente sobre PIX aprovado
-                    if (paymentDetails.payer?.email) {
-                        await logToBrevo('sendSuccessNotificationToCustomer', paymentDetails, paymentDetails.payer.email);
-                    }
-                    
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
@@ -438,8 +369,6 @@ router.post('/webhook', async (req, res) => {
 
                 // Log específico para cartão aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
-                    await logToBrevo('logPaymentApproved', data.id, paymentDetails);
-                    
                     logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
@@ -451,11 +380,6 @@ router.post('/webhook', async (req, res) => {
                 console.error('❌ Erro ao buscar detalhes do pagamento no webhook:', error);
                 logPayment('WEBHOOK_ERRO', data.id, 'ERRO_CONSULTA', {
                     error: error.message
-                });
-                
-                await logToBrevo('logPaymentError', 'webhook_payment_lookup', error, {
-                    payment_id: data.id,
-                    webhook_action: action
                 });
             }
         }
@@ -483,12 +407,6 @@ router.post('/webhook', async (req, res) => {
         logPayment('WEBHOOK_ERRO_GERAL', 'error', 'FALHA', {
             message: error.message
         });
-
-        // Log erro crítico no Brevo
-        await logToBrevo('logCriticalSystemError', error, {
-            webhook_body: req.body,
-            source: 'webhook_handler'
-        });
         
         if (!res.headersSent) {
             res.status(200).json({ 
@@ -513,13 +431,6 @@ router.get('/payment/:id', async (req, res) => {
         logPayment('CONSULTA_POLLING', paymentId, paymentDetails.status, {
             status_detail: paymentDetails.status_detail,
             payment_method_id: paymentDetails.payment_method_id
-        });
-
-        // Log polling no Brevo
-        await logToBrevo('log', 'INFO', 'PAYMENT_LOOKUP', paymentId, paymentDetails.status, {
-            status_detail: paymentDetails.status_detail,
-            payment_method_id: paymentDetails.payment_method_id,
-            via: 'polling'
         });
         
         const response = {
@@ -562,7 +473,7 @@ router.get('/payment/:id', async (req, res) => {
 // CALLBACK URL CONFORME DOC OFICIAL
 // ============================================
 
-router.get('/callback', async (req, res) => {
+router.get('/callback', (req, res) => {
     console.log('🔄 CALLBACK OFICIAL RECEBIDO:', req.query);
     logPayment('CALLBACK', req.query.payment_id || 'unknown', 'CALLBACK', req.query);
     
@@ -571,30 +482,6 @@ router.get('/callback', async (req, res) => {
         res.redirect(`https://www.suellenseragi.com.br/resultado?uid=${req.query.external_reference}`);
     } else {
         res.redirect('https://quizfront.vercel.app');
-    }
-});
-
-// ============================================
-// HEALTH CHECK DO BREVO (SE DISPONÍVEL)
-// ============================================
-
-router.get('/brevo-health', async (req, res) => {
-    if (!brevoLogger) {
-        return res.status(200).json({
-            status: 'NOT_CONFIGURED',
-            message: 'Brevo não configurado - sistema funcionando apenas com logs console'
-        });
-    }
-
-    try {
-        const healthStatus = await brevoLogger.healthCheck();
-        res.status(healthStatus.status === 'OK' ? 200 : 500).json(healthStatus);
-    } catch (error) {
-        res.status(500).json({
-            status: 'ERROR',
-            message: 'Erro ao verificar Brevo',
-            error: error.message
-        });
     }
 });
 
