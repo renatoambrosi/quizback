@@ -404,8 +404,10 @@ router.post('/webhook', async (req, res) => {
                         transaction_amount: paymentDetails.transaction_amount,
                         date_approved: paymentDetails.date_approved
                     });
-                }
-
+    
+                // ENVIAR EMAIL DE CONFIRMAÇÃO
+                await sendPaymentConfirmationEmail(paymentDetails);
+          }
                 // Log específico para cartão aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
                     logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
