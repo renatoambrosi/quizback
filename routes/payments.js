@@ -1,8 +1,59 @@
 const express = require('express');
 const { MercadoPagoConfig, Payment, MerchantOrder } = require('mercadopago');
 const { v4: uuidv4 } = require('uuid');
-// const SibApiV3Sdk = require('@getbrevo/brevo');  // ← TEMPORARIAMENTE DESABILITADO
 const router = express.Router();
+
+// ============================================
+// CONFIGURAÇÃO BREVO - TESTE SIMPLES
+// ============================================
+
+// Função para enviar email via Brevo
+async function sendPaymentConfirmationEmail(paymentData) {
+    try {
+        console.log(`📧 Enviando email para: ${paymentData.payer.email}`);
+        console.log(`🎯 UID: ${paymentData.external_reference}`);
+        console.log(`💰 Valor: R$ ${paymentData.transaction_amount}`);
+        
+        const SibApiV3Sdk = require('@getbrevo/brevo');
+        let defaultClient = SibApiV3Sdk.ApiClient.instance;
+        let apiKey = defaultClient.authentications['api-key'];
+        apiKey.apiKey = process.env.BREVO_API_KEY;
+        
+        let tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
+        
+        const emailData = {
+            sender: {
+                name: "Suellen Seragi",
+                email: "contato@suellenseragi.com.br"
+            },
+            to: [{
+                email: paymentData.payer.email,
+                name: paymentData.payer.first_name || "Cliente"
+            }],
+            subject: "✅ Seu Teste de Prosperidade está pronto!",
+            htmlContent: `
+                <h2>Parabéns! Seu pagamento foi confirmado! 🎉</h2>
+                <p>Olá ${paymentData.payer.first_name || 'Cliente'},</p>
+                <p>Seu pagamento de R$ ${paymentData.transaction_amount.toFixed(2)} foi aprovado com sucesso!</p>
+                <p><strong>Acesse seu resultado personalizado:</strong></p>
+                <p><a href="https://www.suellenseragi.com.br/resultado?uid=${paymentData.external_reference}" 
+                   style="background: #009ee3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                   👉 Ver Meu Resultado Agora
+                </a></p>
+                <hr>
+                <p><small>ID do Pagamento: ${paymentData.id}</small></p>
+                <p><small>Obrigada pela confiança!<br>Suellen Seragi</small></p>
+            `
+        };
+
+        await tranEmailApi.sendTransacEmail(emailData);
+        console.log(`✅ Email enviado com sucesso para: ${paymentData.payer.email}`);
+        
+    } catch (error) {
+        console.error('❌ Erro ao enviar email:', error);
+        console.error('❌ Detalhes:', error.message);
+    }
+}
 
 // ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
@@ -16,15 +67,6 @@ const client = new MercadoPagoConfig({
         timeout: 5000
     }
 });
-
-// ============================================
-// CONFIGURAÇÃO BREVO - TEMPORARIAMENTE DESABILITADA
-// ============================================
-
-// let defaultClient = SibApiV3Sdk.ApiClient.instance;
-// let apiKey = defaultClient.authentications['api-key'];
-// apiKey.apiKey = process.env.BREVO_API_KEY;
-// const tranEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
 const payment = new Payment(client);
 const merchantOrder = new MerchantOrder(client);
@@ -76,20 +118,6 @@ function createAdditionalInfo(paymentData, userUID) {
             }
         }
     };
-}
-
-// Função para enviar email de confirmação - TEMPORARIAMENTE DESABILITADA
-async function sendPaymentConfirmationEmail(paymentData) {
-    try {
-        console.log(`📧 Email seria enviado para: ${paymentData.payer.email}`);
-        console.log(`🎯 UID: ${paymentData.external_reference}`);
-        console.log(`💰 Valor: R$ ${paymentData.transaction_amount}`);
-        
-        // TODO: Implementar envio de email
-        
-    } catch (error) {
-        console.error('❌ Erro ao enviar email:', error);
-    }
 }
 
 // Função para logs estruturados
@@ -159,81 +187,6 @@ router.post('/process_payment', async (req, res) => {
 
         const paymentUID = uid || uuidv4();
         const enhancedAdditionalInfo = createAdditionalInfo(req.body, paymentUID);
-
-        // ============================================
-        // PAGAMENTO CARTÃO - CONFORME DOC OFICIAL MP
-        // ============================================
-
-        if (payment_method_id && token) {
-            console.log('💳 PROCESSANDO CARTÃO - Estrutura Oficial MP');
-
-            const paymentData = {
-                transaction_amount: Number(transaction_amount),
-                token: token,
-                description: description || 'Teste de Prosperidade - Resultado Personalizado',
-                installments: Number(installments) || 1,
-                payment_method_id: payment_method_id,
-                issuer_id: Number(issuer_id),
-                
-                // PAYER conforme documentação oficial
-                payer: {
-                    email: payer.email,
-                    identification: {
-                        type: payer.identification?.type || 'CPF',
-                        number: payer.identification?.number || '12345678909'
-                    }
-                },
-                
-                external_reference: paymentUID,
-                additional_info: enhancedAdditionalInfo,
-                notification_url: `${process.env.BASE_URL}/api/webhook`,
-                statement_descriptor: 'TESTE PROSPERIDADE',
-                binary_mode: false,
-                
-                metadata: {
-                    user_uid: paymentUID,
-                    integration_type: 'checkout_bricks',
-                    version: '2.0'
-                }
-            };
-
-            logPayment('CARTÃO_ENVIANDO', 'pending', 'PROCESSANDO', {
-                transaction_amount: paymentData.transaction_amount,
-                payment_method_id: paymentData.payment_method_id,
-                external_reference: paymentUID
-            });
-
-            const result = await payment.create({
-                body: paymentData,
-                requestOptions: {
-                    idempotencyKey: uuidv4()
-                }
-            });
-
-            logPayment('CARTÃO_RESULTADO', result.id, result.status, {
-                status_detail: result.status_detail,
-                payment_method_id: result.payment_method_id
-            });
-
-            const response = {
-                id: result.id,
-                status: result.status,
-                status_detail: result.status_detail,
-                payment_method_id: result.payment_method_id,
-                payment_type_id: result.payment_type_id,
-                transaction_amount: result.transaction_amount,
-                uid: paymentUID,
-                date_created: result.date_created,
-                date_approved: result.date_approved
-            };
-
-            if (result.status === 'approved') {
-                response.redirect_url = `https://www.suellenseragi.com.br/resultado?uid=${paymentUID}`;
-                logPayment('CARTÃO_APROVADO', result.id, 'SUCCESS', { uid: paymentUID });
-            }
-
-            return res.status(201).json(response);
-        }
 
         // ============================================
         // PAGAMENTO PIX - CONFORME DOC OFICIAL MP
@@ -318,7 +271,7 @@ router.post('/process_payment', async (req, res) => {
 
         return res.status(400).json({
             error: 'Método de pagamento não suportado',
-            message: 'Use cartão de crédito ou PIX'
+            message: 'Use PIX'
         });
 
     } catch (error) {
@@ -387,20 +340,12 @@ router.post('/webhook', async (req, res) => {
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
-                        date_approved: paymentDetails.date_approved
+                        date_approved: paymentDetails.date_approved,
+                        payer_email: paymentDetails.payer.email
                     });
                     
-                    // EMAIL TEMPORARIAMENTE DESABILITADO
+                    // ENVIAR EMAIL VIA BREVO
                     await sendPaymentConfirmationEmail(paymentDetails);
-                }
-
-                // Log específico para cartão aprovado
-                if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
-                    logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
-                        uid: paymentDetails.external_reference,
-                        transaction_amount: paymentDetails.transaction_amount,
-                        installments: paymentDetails.installments
-                    });
                 }
 
             } catch (error) {
