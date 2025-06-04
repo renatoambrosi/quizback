@@ -243,6 +243,7 @@ router.post('/process_payment', async (req, res) => {
                 
                 metadata: {
                     user_uid: paymentUID,
+                    customer_email: payer.email,  // ← SALVAR EMAIL DO FORMULÁRIO
                     integration_type: 'checkout_bricks_pix',
                     version: '2.0'
                 }
@@ -362,7 +363,8 @@ router.post('/webhook', async (req, res) => {
 
                 // Log específico para PIX aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
-                await emailSender.sendPixSuccessEmail(paymentDetails.payer?.email, paymentDetails.external_reference);
+                const customerEmail = paymentDetails.metadata?.customer_email;
+                await emailSender.sendPixSuccessEmail(customerEmail, paymentDetails.external_reference);
     
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
