@@ -4,13 +4,9 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const paymentRoutes = require('./routes/payments');
-const BrevoLogger = require('./brevo-logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Inicializar Brevo Logger para logs do sistema
-const brevoLogger = new BrevoLogger();
 
 // ============================================
 // MIDDLEWARES DE SEGURANÇA
@@ -23,7 +19,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'", "https://sdk.mercadopago.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.mercadopago.com", "https://sdk.mercadopago.com", "https://api.brevo.com"],
+      connectSrc: ["'self'", "https://api.mercadopago.com", "https://sdk.mercadopago.com"],
     },
   },
   crossOriginEmbedderPolicy: false, // Necessário para Mercado Pago
@@ -71,7 +67,7 @@ app.use((req, res, next) => {
 });
 
 // ============================================
-// ROTAS CONFORME DOCUMENTAÇÃO OFICIAL + BREVO
+// ROTAS CONFORME DOCUMENTAÇÃO OFICIAL
 // ============================================
 
 // Health Check
@@ -80,27 +76,19 @@ app.get('/health', (req, res) => {
     status: 'OK', 
     message: 'Backend Teste de Prosperidade funcionando!',
     timestamp: new Date().toISOString(),
-    version: '2.0-oficial-brevo'
+    version: '2.0-oficial'
   });
 });
 
 // Status detalhado do sistema
-app.get('/status', async (req, res) => {
+app.get('/status', (req, res) => {
   const uptime = process.uptime();
   const memoryUsage = process.memoryUsage();
-  
-  // Verificar status do Brevo
-  let brevoStatus = { status: 'NOT_CONFIGURED' };
-  try {
-    brevoStatus = await brevoLogger.healthCheck();
-  } catch (error) {
-    brevoStatus = { status: 'ERROR', message: error.message };
-  }
   
   res.status(200).json({
     status: 'OK',
     service: 'Teste de Prosperidade Backend',
-    version: '2.0-oficial-brevo',
+    version: '2.0-oficial',
     uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
     memory: {
       rss: `${Math.round(memoryUsage.rss / 1024 / 1024)} MB`,
@@ -113,11 +101,8 @@ app.get('/status', async (req, res) => {
       checkout_bricks: true,
       webhook_processing: true,
       polling_support: true,
-      official_mp_integration: true,
-      brevo_logging: brevoStatus.status === 'OK',
-      email_notifications: !!process.env.BREVO_API_KEY
-    },
-    brevo: brevoStatus
+      official_mp_integration: true
+    }
   });
 });
 
@@ -164,11 +149,6 @@ app.get('/api/environment', (req, res) => {
       public_key: !!process.env.MERCADOPAGO_PUBLIC_KEY,
       webhook_secret: !!process.env.MERCADOPAGO_WEBHOOK_SECRET
     },
-    has_brevo_credentials: {
-      api_key: !!process.env.BREVO_API_KEY,
-      sender_email: !!process.env.SENDER_EMAIL,
-      admin_email: !!process.env.ADMIN_EMAIL
-    },
     timestamp: new Date().toISOString()
   });
 });
@@ -178,13 +158,12 @@ app.get('*', (req, res) => {
   console.log(`❓ Rota não encontrada: ${req.method} ${req.path}`);
   res.status(404).json({ 
     error: 'Rota não encontrada',
-    message: 'Backend do Teste de Prosperidade - Oficial + Brevo',
+    message: 'Backend do Teste de Prosperidade - Oficial',
     requested_path: req.path,
     available_endpoints: {
       health: '/health',
       status: '/status',
       mp_health: '/api/mp-health',
-      brevo_health: '/api/brevo-health',
       process_payment: '/api/process_payment',
       webhook: '/api/webhook',
       payment_lookup: '/api/payment/:id',
@@ -195,10 +174,10 @@ app.get('*', (req, res) => {
 });
 
 // ============================================
-// TRATAMENTO DE ERROS GLOBAL + BREVO
+// TRATAMENTO DE ERROS GLOBAL
 // ============================================
 
-app.use(async (error, req, res, next) => {
+app.use((error, req, res, next) => {
   const timestamp = new Date().toISOString();
   console.error(`❌ ERRO GLOBAL [${timestamp}]:`, {
     message: error.message,
@@ -207,18 +186,6 @@ app.use(async (error, req, res, next) => {
     method: req.method,
     ip: req.clientIP
   });
-  
-  // Log erro crítico no Brevo
-  try {
-    await brevoLogger.logCriticalSystemError(error, {
-      path: req.path,
-      method: req.method,
-      ip: req.clientIP,
-      headers: req.headers
-    });
-  } catch (brevoError) {
-    console.error('❌ Erro ao enviar log para Brevo:', brevoError);
-  }
   
   res.status(error.status || 500).json({
     error: 'Erro interno do servidor',
@@ -244,23 +211,13 @@ process.on('SIGINT', () => {
 });
 
 // Log de erros não capturados
-process.on('uncaughtException', async (error) => {
+process.on('uncaughtException', (error) => {
   console.error('💥 UNCAUGHT EXCEPTION:', error);
-  try {
-    await brevoLogger.logCriticalSystemError(error, { source: 'uncaughtException' });
-  } catch (brevoError) {
-    console.error('❌ Erro ao enviar log crítico para Brevo:', brevoError);
-  }
   process.exit(1);
 });
 
-process.on('unhandledRejection', async (reason, promise) => {
+process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 UNHANDLED REJECTION:', reason, promise);
-  try {
-    await brevoLogger.logCriticalSystemError(new Error(reason), { source: 'unhandledRejection', promise });
-  } catch (brevoError) {
-    console.error('❌ Erro ao enviar log crítico para Brevo:', brevoError);
-  }
   process.exit(1);
 });
 
@@ -268,12 +225,12 @@ process.on('unhandledRejection', async (reason, promise) => {
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================
 
-app.listen(PORT, async () => {
+app.listen(PORT, () => {
   const timestamp = new Date().toISOString();
   console.log(`
   🚀 ============================================
      BACKEND TESTE DE PROSPERIDADE ONLINE!
-     VERSION 2.0 - OFICIAL MP + BREVO LOGS
+     VERSION 2.0 - CONFORME DOC OFICIAL MP
   ============================================
   📅 Iniciado em: ${timestamp}
   🌐 Servidor: http://localhost:${PORT}
@@ -283,16 +240,12 @@ app.listen(PORT, async () => {
   🔔 Webhook: http://localhost:${PORT}/api/webhook
   🔍 Consulta: http://localhost:${PORT}/api/payment/:id
   🔄 Callback: http://localhost:${PORT}/api/callback
-  📧 Brevo Health: http://localhost:${PORT}/api/brevo-health
   
   🔧 CONFIGURAÇÕES:
   • Node ENV: ${process.env.NODE_ENV || 'development'}
   • MP Access Token: ${process.env.MERCADOPAGO_ACCESS_TOKEN ? '✅ Configurado' : '❌ Não configurado'}
   • MP Public Key: ${process.env.MERCADOPAGO_PUBLIC_KEY ? '✅ Configurado' : '❌ Não configurado'}
   • Webhook Secret: ${process.env.MERCADOPAGO_WEBHOOK_SECRET ? '✅ Configurado' : '❌ Não configurado'}
-  • Brevo API Key: ${process.env.BREVO_API_KEY ? '✅ Configurado' : '❌ Não configurado'}
-  • Sender Email: ${process.env.SENDER_EMAIL ? '✅ Configurado' : '❌ Não configurado'}
-  • Admin Email: ${process.env.ADMIN_EMAIL ? '✅ Configurado' : '❌ Não configurado'}
   • Base URL: ${process.env.BASE_URL || 'Não configurado'}
   
   🎯 IMPLEMENTAÇÃO OFICIAL:
@@ -302,10 +255,9 @@ app.listen(PORT, async () => {
   ✅ Webhook conforme padrão MP
   ✅ Sistema de polling para PIX
   ✅ Additional info conforme especificação
-  ✅ Logs estruturados Brevo
-  ✅ Notificações email automáticas
-  ✅ Alertas críticos para admin
-  ✅ Sistema de monitoramento completo
+  ✅ Logs estruturados para debugging
+  ✅ Validações conforme documentação
+  ✅ Tratamento de erros oficial MP
   ============================================
   `);
   
@@ -316,54 +268,19 @@ app.listen(PORT, async () => {
     'BASE_URL'
   ];
   
-  const optionalConfigs = [
-    'BREVO_API_KEY',
-    'SENDER_EMAIL', 
-    'ADMIN_EMAIL'
-  ];
+  const missingConfigs = criticalConfigs.filter(config => !process.env[config]);
   
-  const missingCritical = criticalConfigs.filter(config => !process.env[config]);
-  const missingOptional = optionalConfigs.filter(config => !process.env[config]);
-  
-  if (missingCritical.length > 0) {
+  if (missingConfigs.length > 0) {
     console.log(`
-  ⚠️  ATENÇÃO: Configurações CRÍTICAS em falta:
-  ${missingCritical.map(config => `   • ${config}`).join('\n')}
+  ⚠️  ATENÇÃO: Configurações em falta:
+  ${missingConfigs.map(config => `   • ${config}`).join('\n')}
+  
+  Configure essas variáveis no Railway para funcionamento completo.
     `);
-  }
-  
-  if (missingOptional.length > 0) {
+  } else {
     console.log(`
-  📧 OPCIONAL: Configurações Brevo em falta (logs básicos funcionando):
-  ${missingOptional.map(config => `   • ${config}`).join('\n')}
-    `);
-  }
-  
-  if (missingCritical.length === 0) {
-    console.log(`
-  ✅ CONFIGURAÇÕES CRÍTICAS OK!
+  ✅ TODAS AS CONFIGURAÇÕES ESTÃO OK!
   🚀 Sistema pronto para produção com implementação oficial MP.
     `);
-    
-    // Testar Brevo se configurado
-    if (process.env.BREVO_API_KEY) {
-      try {
-        const brevoStatus = await brevoLogger.healthCheck();
-        if (brevoStatus.status === 'OK') {
-          console.log(`
-  📧 ✅ BREVO CONECTADO COM SUCESSO!
-  🔔 Logs e notificações por email funcionando.
-          `);
-        } else {
-          console.log(`
-  📧 ⚠️ BREVO COM PROBLEMAS: ${brevoStatus.message}
-          `);
-        }
-      } catch (error) {
-        console.log(`
-  📧 ❌ ERRO AO CONECTAR BREVO: ${error.message}
-        `);
-      }
-    }
   }
 });
