@@ -178,8 +178,9 @@ class SimpleEmailSender {
                 
                 <div class="footer">
                     <p><strong>Suellen Seragi - Teste de Prosperidade</strong></p>
+                    <p><strong>suellenseragi.com.br</strong></p>
                     <p>Este é um email automático de confirmação de pagamento</p>
-                    <p>© 2024 - Todos os direitos reservados</p>
+                    <p>© 2025 - Todos os direitos reservados</p>
                 </div>
             </div>
         </body>
