@@ -13,7 +13,7 @@ class SimpleEmailSender {
     // APENAS EMAIL PARA CLIENTE QUE PAGOU PIX
     // ============================================
     
-    async sendPixSuccessEmail(customerEmail, uid, paymentAmount = '10,00') {
+    async sendPixSuccessEmail(customerEmail, uid, paymentAmount = '15,00') {
         try {
             if (!this.apiKey || !customerEmail || !uid) {
                 console.log('📧 Email não enviado - dados incompletos');
@@ -67,7 +67,7 @@ class SimpleEmailSender {
     // ============================================
     
     createSuccessTemplate(uid, amount) {
-        const resultUrl = `https://www.suellenseragi.com.br/resultado?uid=${uid}`;
+        const resultUrl = `https://www.suellenseragi.com.br/resultado2?uid=${uid}`;
         
         return `
         <!DOCTYPE html>
