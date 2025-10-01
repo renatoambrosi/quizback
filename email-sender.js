@@ -67,7 +67,7 @@ class SimpleEmailSender {
     // ============================================
     
     createSuccessTemplate(uid, amount) {
-        const resultUrl = `https://www.suellenseragi.com.br/resultado2?uid=${uid}`;
+        const resultUrl = `https://www.suellenseragi.com.br/resultado1?uid=${uid}`;
         
         return `
         <!DOCTYPE html>
