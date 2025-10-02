@@ -24,21 +24,12 @@ class PushoverNotifier {
                 minute: '2-digit'
             });
 
-            const message = `💰 NOVA VENDA PIX!
-
-💵 Valor: ${amount}
-🆔 Payment ID: ${paymentDetails.id}
-👤 UID: ${paymentDetails.external_reference}
-📅 Data: ${timestamp}
-📧 Cliente: ${paymentDetails.metadata?.customer_email || 'N/A'}
-
-✅ Status: Aprovado
-🎯 Produto: Teste de Prosperidade`;
+            const message = `Valor: R$18,81`;
 
             const notificationData = {
                 token: this.appToken,
                 user: this.userKey,
-                title: '🎉 PIX APROVADO - Nova Venda!',
+                title: 'Venda Aprovada!',
                 message: message,
                 priority: 1,
                 sound: 'cash'
