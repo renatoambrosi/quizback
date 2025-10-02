@@ -4,6 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const SimpleEmailSender = require('../email-sender');
 const emailSender = new SimpleEmailSender();
+const PushoverNotifier = require('../pushover-notifier');
+const pushoverNotifier = new PushoverNotifier();
+
 
 // ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
@@ -365,6 +368,13 @@ router.post('/webhook', async (req, res) => {
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
                 const customerEmail = paymentDetails.metadata?.customer_email;
                 await emailSender.sendPixSuccessEmail(customerEmail, paymentDetails.external_reference);
+
+                    // Notificação Pushover
+                    try {
+                        await pushoverNotifier.sendPixApprovedNotification(paymentDetails);
+                    } catch (error) {
+                        console.error('❌ Erro Pushover PIX:', error);
+                    }
     
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
