@@ -7,6 +7,8 @@ const paymentRoutes = require('./routes/payments');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+require('./webhook-tally')(app);
+
 
 // ============================================
 // MIDDLEWARES DE SEGURANÇA
