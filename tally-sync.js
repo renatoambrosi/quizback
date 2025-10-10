@@ -1,249 +1,205 @@
 const { createClient } = require('@supabase/supabase-js');
-const https = require('https');
+const { GoogleAuth } = require('google-auth-library');
+const { google } = require('googleapis');
 
 class TallySync {
     constructor() {
+        // Configuração Supabase
         this.supabase = createClient(
             process.env.SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_KEY
+            process.env.SUPABASE_SERVICE_ROLE_KEY
         );
         
-        this.sheetId = process.env.TALLY_SHEET_ID || process.env.GOOGLE_SHEET_ID;
-        this.tableName = process.env.SUPABASE_TABLE_NAME || 'tally_responses';
-        this.questionsCount = parseInt(process.env.TALLY_QUESTIONS_COUNT) || 15;
-        this.lastQuestionColumn = 4 + this.questionsCount; // D=3, E=4, F=5... T=19 para 15 questões
-    }
-    
-    async syncAllData() {
-        try {
-            console.log('🔄 Iniciando sincronização COMPLETA da planilha Tally');
-            
-            const allTallyData = await this.getAllTallyData();
-            
-            if (!allTallyData || allTallyData.length === 0) {
-                console.log('⚠️ Nenhum dado encontrado na planilha Tally');
-                return false;
-            }
-            
-            console.log(`📊 Encontrados ${allTallyData.length} registros na planilha`);
-            
-            let successCount = 0;
-            let errorCount = 0;
-            
-            for (const user of allTallyData) {
-                try {
-                    await this.upsertToSupabase(user);
-                    successCount++;
-                    console.log(`✅ Usuário sincronizado: ${user.uid}`);
-                } catch (error) {
-                    errorCount++;
-                    console.error(`❌ Erro ao sincronizar usuário ${user.uid}:`, error);
-                }
-            }
-            
-            console.log(`📈 Sincronização completa: ${successCount} sucessos, ${errorCount} erros`);
-            return true;
-            
-        } catch (error) {
-            console.error('❌ Erro na sincronização completa:', error);
-            return false;
-        }
-    }
-    
-    async syncPaymentUser(uid, transactionAmount) {
-        try {
-            console.log(`💰 Processando pagamento aprovado para UID: ${uid}`);
-            
-            const { data: existingUser } = await this.supabase
-                .from(this.tableName)
-                .select('*')
-                .eq('uid', uid)
-                .single();
-            
-            if (existingUser) {
-                const { error } = await this.supabase
-                    .from(this.tableName)
-                    .update({
-                        status_pagamento_teste: 'aprovado',
-                        data_pgto_teste: new Date().toISOString(),
-                        valor_pago: transactionAmount
-                    })
-                    .eq('uid', uid);
-                
-                if (error) throw error;
-                console.log(`✅ Pagamento atualizado para usuário existente: ${uid}`);
-            } else {
-                await this.syncAllData();
-                
-                const { error } = await this.supabase
-                    .from(this.tableName)
-                    .update({
-                        status_pagamento_teste: 'aprovado',
-                        data_pgto_teste: new Date().toISOString(),
-                        valor_pago: transactionAmount
-                    })
-                    .eq('uid', uid);
-                
-                if (error) throw error;
-                console.log(`✅ Usuário novo sincronizado e pagamento registrado: ${uid}`);
-            }
-            
-            return true;
-            
-        } catch (error) {
-            console.error(`❌ Erro ao processar pagamento do UID ${uid}:`, error);
-            return false;
-        }
-    }
-    
-    async getAllTallyData() {
-        return new Promise((resolve, reject) => {
-            const url = `https://docs.google.com/spreadsheets/d/${this.sheetId}/export?format=csv&gid=0`;
-            
-            console.log(`📥 Baixando planilha: ${url}`);
-            
-            https.get(url, (response) => {
-                let data = '';
-                
-                response.on('data', (chunk) => {
-                    data += chunk;
-                });
-                
-                response.on('end', () => {
-                    try {
-                        const users = this.parseCSVData(data);
-                        resolve(users);
-                    } catch (error) {
-                        console.error('❌ Erro ao processar CSV:', error);
-                        reject(error);
-                    }
-                });
-                
-            }).on('error', (error) => {
-                console.error('❌ Erro ao baixar planilha:', error);
-                reject(error);
-            });
+        // Configuração Google Sheets
+        this.auth = new GoogleAuth({
+            credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
+            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
         });
+        
+        this.sheets = google.sheets({ version: 'v4', auth: this.auth });
+        this.sheetId = process.env.TALLY_SHEET_ID;
+        this.questionsCount = parseInt(process.env.TALLY_QUESTIONS_COUNT) || 15;
+        this.tableName = process.env.SUPABASE_TABLE_NAME || 'base';
+        
+        console.log(`🔧 TallySync inicializado:`);
+        console.log(`📊 Sheet ID: ${this.sheetId}`);
+        console.log(`❓ Questões: ${this.questionsCount}`);
+        console.log(`🗃️ Tabela: ${this.tableName}`);
     }
-    
-    parseCSVData(csvData) {
+
+    async syncData() {
         try {
-            const lines = csvData.split('\n');
-            if (lines.length <= 1) return [];
+            console.log('🚀 Iniciando sincronização Tally → Supabase...');
             
-            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-            console.log('📋 Headers encontrados:', headers.slice(0, 10)); // Log dos primeiros 10 headers
+            // 1. Buscar dados do Tally
+            console.log('📥 Buscando dados do Tally...');
+            const tallyData = await this.fetchTallyData();
+            console.log(`📊 ${tallyData.length} registros encontrados no Tally`);
             
-            const users = [];
+            // 2. Buscar IDs já existentes no Supabase
+            console.log('🔍 Verificando registros existentes no Supabase...');
+            const existingIds = await this.getExistingSubmissionIds();
+            console.log(`✅ ${existingIds.size} registros já existem no Supabase`);
             
-            // CORRIGIDO: Busca case-insensitive e mais variações
-            const submissionIdIndex = this.findColumnIndex(headers, [
-                'Submission ID', 'submission id', 'submissionid', 'SubmissionID', 
-                'ID de envio', 'id_envio'
-            ]);
-            const timestampIndex = this.findColumnIndex(headers, [
-                'Submitted at', 'submitted at', 'timestamp', 'data', 'Data'
-            ]);
-            const nameIndex = this.findColumnIndex(headers, [
-                'Qual o seu nome?', 'nome', 'name', 'qual seu nome', 'Nome'
-            ]);
-            const emailIndex = this.findColumnIndex(headers, [
-                'Qual o seu e-mail', 'email', 'e-mail', 'Email', 'E-mail'
-            ]);
+            // 3. Filtrar novos registros
+            const newRecords = tallyData.filter(record => !existingIds.has(record.submission_id));
+            console.log(`🆕 ${newRecords.length} novos registros para inserir`);
             
-            console.log(`📍 Índices encontrados: Submission=${submissionIdIndex}, Name=${nameIndex}, Email=${emailIndex}`);
-            
-            if (submissionIdIndex === -1) {
-                console.error('❌ Headers disponíveis:', headers);
-                throw new Error('Coluna Submission ID não encontrada. Verificar estrutura da planilha.');
+            if (newRecords.length === 0) {
+                console.log('✨ Todos os dados já estão sincronizados!');
+                return { success: true, inserted: 0, message: 'Nenhum registro novo encontrado' };
             }
             
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
-                if (!line.trim()) continue;
+            // 4. Inserir novos registros
+            console.log('💾 Inserindo novos registros no Supabase...');
+            const { data, error } = await this.supabase
+                .from(this.tableName)
+                .insert(newRecords);
                 
-                const columns = line.split(',').map(col => col.replace(/"/g, '').trim());
+            if (error) {
+                throw error;
+            }
+            
+            console.log(`✅ ${newRecords.length} registros inseridos com sucesso!`);
+            return { 
+                success: true, 
+                inserted: newRecords.length,
+                message: `${newRecords.length} registros sincronizados com sucesso`
+            };
+            
+        } catch (error) {
+            console.error('❌ Erro na sincronização:', error);
+            throw error;
+        }
+    }
+
+    async fetchTallyData() {
+        try {
+            // Buscar dados da planilha
+            const range = 'A:Z'; // Buscar todas as colunas necessárias
+            const response = await this.sheets.spreadsheets.values.get({
+                spreadsheetId: this.sheetId,
+                range: range,
+            });
+
+            const rows = response.data.values;
+            if (!rows || rows.length === 0) {
+                throw new Error('Nenhum dado encontrado na planilha');
+            }
+
+            // Processar cabeçalhos e dados
+            const headers = rows[0];
+            const dataRows = rows.slice(1);
+            
+            console.log(`📋 Headers encontrados: ${headers.join(', ')}`);
+            
+            return this.parseCSVData(headers, dataRows);
+            
+        } catch (error) {
+            console.error('❌ Erro ao buscar dados do Tally:', error);
+            throw error;
+        }
+    }
+
+    parseCSVData(headers, dataRows) {
+        try {
+            // Buscar índices das colunas principais (case-insensitive)
+            const submissionIdIndex = this.findColumnIndex(headers, 'submission id');
+            const respondentIdIndex = this.findColumnIndex(headers, 'respondent id');  
+            const submittedAtIndex = this.findColumnIndex(headers, 'submitted at');
+            const nameIndex = this.findColumnIndex(headers, 'qual o seu nome');
+            const emailIndex = this.findColumnIndex(headers, 'qual o seu e-mail');
+
+            console.log(`🔍 Índices encontrados:`);
+            console.log(`   Submission ID: ${submissionIdIndex}`);
+            console.log(`   Respondent ID: ${respondentIdIndex}`);
+            console.log(`   Submitted At: ${submittedAtIndex}`);
+            console.log(`   Nome: ${nameIndex}`);
+            console.log(`   Email: ${emailIndex}`);
+
+            // Encontrar índices das perguntas (F até T = colunas 5 até 19)
+            const questionStartIndex = 5; // Coluna F
+            const questionEndIndex = questionStartIndex + this.questionsCount - 1; // Coluna T
+            
+            console.log(`❓ Questões nas colunas ${questionStartIndex} até ${questionEndIndex}`);
+
+            const parsedData = [];
+
+            for (let i = 0; i < dataRows.length; i++) {
+                const row = dataRows[i];
                 
-                if (!columns[submissionIdIndex]) continue;
-                
-                // CORRIGIDO: Usa a variável dinâmica
-                const completouTeste = columns[this.lastQuestionColumn] && columns[this.lastQuestionColumn].trim() !== '';
-                
-                const userData = {
-                    nome: columns[nameIndex] || 'Nome não informado',
-                    email: columns[emailIndex] || '',
-                    uid: columns[submissionIdIndex],
-                    data_registro_inicial: this.parseTimestamp(columns[timestampIndex]),
-                    iniciou_o_teste: true,
-                    concluiu_o_teste: completouTeste,
-                    status_pagamento_teste: 'pendente',
-                    data_pgto_teste: null,
-                    valor_pago: 0.00,
-                    traffic_source: 'indefinido',
-                    aceita_receber_emails: false,
-                    ouro: false,
-                    lda: false,
-                    tm: false,
-                    grm: false,
-                    quantidade_de_produtos: 0,
-                    valor_total: 0.00
+                // Pular linhas vazias
+                if (!row || row.length === 0 || !row[submissionIdIndex]) {
+                    continue;
+                }
+
+                // Dados básicos
+                const record = {
+                    submission_id: row[submissionIdIndex] || '',
+                    respondent_id: row[respondentIdIndex] || '',
+                    submitted_at: this.parseDate(row[submittedAtIndex]),
+                    name: row[nameIndex] || '',
+                    email: row[emailIndex] || '',
                 };
-                
-                users.push(userData);
+
+                // Adicionar respostas das questões
+                for (let q = 0; q < this.questionsCount; q++) {
+                    const columnIndex = questionStartIndex + q;
+                    const questionKey = `question_${q + 1}`;
+                    record[questionKey] = row[columnIndex] || '';
+                }
+
+                parsedData.push(record);
             }
-            
-            console.log(`✅ Processados ${users.length} usuários da planilha`);
-            return users;
-            
+
+            console.log(`✅ ${parsedData.length} registros processados`);
+            return parsedData;
+
         } catch (error) {
             console.error('❌ Erro ao processar dados CSV:', error);
             throw error;
         }
     }
-    
-    findColumnIndex(headers, possibleNames) {
-        for (const name of possibleNames) {
-            const index = headers.findIndex(header => 
-                header && header.toLowerCase().includes(name.toLowerCase())
-            );
-            if (index !== -1) {
-                console.log(`✅ Coluna "${name}" encontrada no índice ${index}`);
-                return index;
-            }
+
+    findColumnIndex(headers, searchTerm) {
+        const index = headers.findIndex(header => 
+            header && header.toLowerCase().trim() === searchTerm.toLowerCase().trim()
+        );
+        
+        if (index === -1) {
+            throw new Error(`Coluna "${searchTerm}" não encontrada. Headers disponíveis: ${headers.join(', ')}`);
         }
-        console.log(`❌ Nenhuma das variações encontrada:`, possibleNames);
-        return -1;
+        
+        return index;
     }
-    
-    parseTimestamp(timestamp) {
-        if (!timestamp) return new Date().toISOString();
+
+    parseDate(dateStr) {
+        if (!dateStr) return null;
         
         try {
-            const date = new Date(timestamp);
-            if (isNaN(date.getTime())) {
-                return new Date().toISOString();
-            }
+            // Formato esperado do Tally: "MM/DD/YYYY HH:MM:SS"
+            const date = new Date(dateStr);
             return date.toISOString();
-        } catch {
-            return new Date().toISOString();
+        } catch (error) {
+            console.warn(`⚠️ Erro ao processar data: ${dateStr}`);
+            return null;
         }
     }
-    
-    async upsertToSupabase(userData) {
+
+    async getExistingSubmissionIds() {
         try {
-            const { error } = await this.supabase
+            const { data, error } = await this.supabase
                 .from(this.tableName)
-                .upsert(userData, {
-                    onConflict: 'uid',
-                    ignoreDuplicates: false
-                });
+                .select('submission_id');
+                
+            if (error) {
+                throw error;
+            }
             
-            if (error) throw error;
-            
-            return true;
+            return new Set(data.map(row => row.submission_id));
             
         } catch (error) {
-            console.error('❌ Erro ao inserir no Supabase:', error);
+            console.error('❌ Erro ao buscar IDs existentes:', error);
             throw error;
         }
     }
