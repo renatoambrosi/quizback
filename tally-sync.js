@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const axios = require('axios');
 
 class TallySync {
     constructor() {
@@ -76,8 +75,14 @@ class TallySync {
             
             console.log(`🌐 Fazendo requisição para: ${url}`);
             
-            const response = await axios.get(url);
-            const rows = response.data.values;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            const rows = data.values;
             
             if (!rows || rows.length === 0) {
                 throw new Error('Nenhum dado encontrado na planilha');
@@ -93,7 +98,7 @@ class TallySync {
             return this.parseCSVData(headers, dataRows);
             
         } catch (error) {
-            console.error('❌ Erro ao buscar dados do Tally:', error.response?.data || error.message);
+            console.error('❌ Erro ao buscar dados do Tally:', error.message);
             throw error;
         }
     }
