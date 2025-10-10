@@ -1,6 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const { GoogleAuth } = require('google-auth-library');
-const { google } = require('googleapis');
+const axios = require('axios');
 
 class TallySync {
     constructor() {
@@ -10,19 +9,15 @@ class TallySync {
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
         
-        // Configuração Google Sheets
-        this.auth = new GoogleAuth({
-            credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
-            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
-        });
-        
-        this.sheets = google.sheets({ version: 'v4', auth: this.auth });
+        // Configuração Google Sheets API
+        this.apiKey = process.env.GOOGLE_SHEETS_API_KEY;
         this.sheetId = process.env.TALLY_SHEET_ID;
         this.questionsCount = parseInt(process.env.TALLY_QUESTIONS_COUNT) || 15;
         this.tableName = process.env.SUPABASE_TABLE_NAME || 'base';
         
         console.log(`🔧 TallySync inicializado:`);
         console.log(`📊 Sheet ID: ${this.sheetId}`);
+        console.log(`🔑 API Key: ${this.apiKey}`);
         console.log(`❓ Questões: ${this.questionsCount}`);
         console.log(`🗃️ Tabela: ${this.tableName}`);
     }
@@ -32,7 +27,7 @@ class TallySync {
             console.log('🚀 Iniciando sincronização Tally → Supabase...');
             
             // 1. Buscar dados do Tally
-            console.log('📥 Buscando dados do Tally...');
+            console.log('📥 Buscando dados do Tally via Google Sheets API...');
             const tallyData = await this.fetchTallyData();
             console.log(`📊 ${tallyData.length} registros encontrados no Tally`);
             
@@ -75,14 +70,15 @@ class TallySync {
 
     async fetchTallyData() {
         try {
-            // Buscar dados da planilha
+            // URL da Google Sheets API v4
             const range = 'A:Z'; // Buscar todas as colunas necessárias
-            const response = await this.sheets.spreadsheets.values.get({
-                spreadsheetId: this.sheetId,
-                range: range,
-            });
-
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.sheetId}/values/${range}?key=${this.apiKey}`;
+            
+            console.log(`🌐 Fazendo requisição para: ${url}`);
+            
+            const response = await axios.get(url);
             const rows = response.data.values;
+            
             if (!rows || rows.length === 0) {
                 throw new Error('Nenhum dado encontrado na planilha');
             }
@@ -92,11 +88,12 @@ class TallySync {
             const dataRows = rows.slice(1);
             
             console.log(`📋 Headers encontrados: ${headers.join(', ')}`);
+            console.log(`📄 ${dataRows.length} linhas de dados encontradas`);
             
             return this.parseCSVData(headers, dataRows);
             
         } catch (error) {
-            console.error('❌ Erro ao buscar dados do Tally:', error);
+            console.error('❌ Erro ao buscar dados do Tally:', error.response?.data || error.message);
             throw error;
         }
     }
