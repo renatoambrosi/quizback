@@ -6,7 +6,31 @@ const SimpleEmailSender = require('../email-sender');
 const emailSender = new SimpleEmailSender();
 const PushoverNotifier = require('../pushover-notifier');
 const pushoverNotifier = new PushoverNotifier();
+const TallySync = require('../tally-sync');
+const tallySync = new TallySync();
 
+// ============================================
+// FUNÇÃO DE SINCRONIZAÇÃO TALLY -> SUPABASE
+// ============================================
+
+async function syncTallyData(uid, transactionAmount) {
+    try {
+        console.log(`🔄 Iniciando sincronização Tally para UID: ${uid}`);
+        
+        const result = await tallySync.syncPaymentUser(uid, transactionAmount);
+        
+        if (result) {
+            console.log(`✅ Sincronização OK: UID=${uid}, Valor=${transactionAmount}`);
+        } else {
+            console.log(`⚠️ Sincronização falhou: UID=${uid}`);
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('❌ Erro na sincronização Tally:', error);
+        return false;
+    }
+}
 
 // ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
@@ -375,7 +399,10 @@ router.post('/webhook', async (req, res) => {
                     } catch (error) {
                         console.error('❌ Erro Pushover PIX:', error);
                     }
-    
+
+                    // SINCRONIZAÇÃO TALLY -> SUPABASE
+                    syncTallyData(paymentDetails.external_reference, paymentDetails.transaction_amount).catch(() => {});
+
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
