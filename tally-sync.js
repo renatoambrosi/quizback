@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const { google } = require('googleapis');
+const https = require('https');
 
 class TallySync {
     constructor() {
@@ -7,11 +7,6 @@ class TallySync {
             process.env.SUPABASE_URL,
             process.env.SUPABASE_ANON_KEY
         );
-        
-        this.sheets = google.sheets({
-            version: 'v4',
-            auth: process.env.GOOGLE_SHEETS_API_KEY
-        });
         
         this.sheetId = process.env.TALLY_SHEET_ID;
         this.tableName = process.env.SUPABASE_TABLE_NAME;
@@ -100,44 +95,70 @@ class TallySync {
     }
     
     async getAllTallyData() {
-        try {
-            const response = await this.sheets.spreadsheets.values.get({
-                spreadsheetId: this.sheetId,
-                range: 'Form responses 1!A:AE',
+        return new Promise((resolve, reject) => {
+            const url = `https://docs.google.com/spreadsheets/d/${this.sheetId}/export?format=csv&gid=0`;
+            
+            https.get(url, (response) => {
+                let data = '';
+                
+                response.on('data', (chunk) => {
+                    data += chunk;
+                });
+                
+                response.on('end', () => {
+                    try {
+                        const users = this.parseCSVData(data);
+                        resolve(users);
+                    } catch (error) {
+                        console.error('❌ Erro ao processar CSV:', error);
+                        reject(error);
+                    }
+                });
+                
+            }).on('error', (error) => {
+                console.error('❌ Erro ao baixar planilha:', error);
+                reject(error);
             });
+        });
+    }
+    
+    parseCSVData(csvData) {
+        try {
+            const lines = csvData.split('\n');
+            if (lines.length <= 1) return [];
             
-            const rows = response.data.values;
-            if (!rows || rows.length <= 1) return [];
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+            const users = [];
             
-            const headerRow = rows[0];
-            const submissionIdIndex = this.findColumnIndex(headerRow, ['submission id', 'submissionid']);
+            const submissionIdIndex = this.findColumnIndex(headers, ['submission id', 'submissionid']);
             const timestampIndex = 0;
-            const nameIndex = this.findColumnIndex(headerRow, ['nome', 'name', 'qual seu nome']);
-            const emailIndex = this.findColumnIndex(headerRow, ['email', 'e-mail']);
+            const nameIndex = this.findColumnIndex(headers, ['nome', 'name', 'qual seu nome']);
+            const emailIndex = this.findColumnIndex(headers, ['email', 'e-mail']);
             
             if (submissionIdIndex === -1) {
                 throw new Error('Coluna Submission ID não encontrada');
             }
             
-            const users = [];
-            
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
                 
-                if (!row[submissionIdIndex]) continue;
+                const columns = line.split(',').map(col => col.replace(/"/g, '').trim());
                 
-                const completouTeste = row[30] && row[30].trim() !== '';
+                if (!columns[submissionIdIndex]) continue;
+                
+                const completouTeste = columns[30] && columns[30].trim() !== '';
                 
                 const userData = {
-                    nome: row[nameIndex] || 'Nome não informado',
-                    email: row[emailIndex] || '',
-                    uid: row[submissionIdIndex],
-                    data_registro_inicial: this.parseTimestamp(row[timestampIndex]),
+                    nome: columns[nameIndex] || 'Nome não informado',
+                    email: columns[emailIndex] || '',
+                    uid: columns[submissionIdIndex],
+                    data_registro_inicial: this.parseTimestamp(columns[timestampIndex]),
                     iniciou_o_teste: true,
                     concluiu_o_teste: completouTeste,
                     status_pagamento_teste: 'pendente',
                     data_pgto_teste: null,
-                    valor_pago: 0,
+                    valor_pago: 0.00,
                     traffic_source: 'indefinido',
                     aceita_receber_emails: false,
                     ouro: false,
@@ -145,7 +166,7 @@ class TallySync {
                     tm: false,
                     grm: false,
                     quantidade_de_produtos: 0,
-                    valor_total: 0
+                    valor_total: 0.00
                 };
                 
                 users.push(userData);
@@ -154,14 +175,14 @@ class TallySync {
             return users;
             
         } catch (error) {
-            console.error('❌ Erro ao buscar dados da planilha Tally:', error);
+            console.error('❌ Erro ao processar dados CSV:', error);
             throw error;
         }
     }
     
-    findColumnIndex(headerRow, possibleNames) {
+    findColumnIndex(headers, possibleNames) {
         for (const name of possibleNames) {
-            const index = headerRow.findIndex(header => 
+            const index = headers.findIndex(header => 
                 header && header.toLowerCase().includes(name.toLowerCase())
             );
             if (index !== -1) return index;
