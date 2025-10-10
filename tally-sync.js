@@ -8,8 +8,10 @@ class TallySync {
             process.env.SUPABASE_SERVICE_KEY
         );
         
-        this.sheetId = process.env.TALLY_SHEET_ID;
-        this.tableName = process.env.SUPABASE_TABLE_NAME;
+        this.sheetId = process.env.TALLY_SHEET_ID || process.env.GOOGLE_SHEET_ID;
+        this.tableName = process.env.SUPABASE_TABLE_NAME || 'tally_responses';
+        this.questionsCount = parseInt(process.env.TALLY_QUESTIONS_COUNT) || 15;
+        this.lastQuestionColumn = 4 + this.questionsCount; // D=3, E=4, F=5... T=19 para 15 questões
     }
     
     async syncAllData() {
@@ -98,6 +100,8 @@ class TallySync {
         return new Promise((resolve, reject) => {
             const url = `https://docs.google.com/spreadsheets/d/${this.sheetId}/export?format=csv&gid=0`;
             
+            console.log(`📥 Baixando planilha: ${url}`);
+            
             https.get(url, (response) => {
                 let data = '';
                 
@@ -128,15 +132,30 @@ class TallySync {
             if (lines.length <= 1) return [];
             
             const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+            console.log('📋 Headers encontrados:', headers.slice(0, 10)); // Log dos primeiros 10 headers
+            
             const users = [];
             
-            const submissionIdIndex = this.findColumnIndex(headers, ['submission id', 'submissionid']);
-            const timestampIndex = 0;
-            const nameIndex = this.findColumnIndex(headers, ['nome', 'name', 'qual seu nome']);
-            const emailIndex = this.findColumnIndex(headers, ['email', 'e-mail']);
+            // CORRIGIDO: Busca case-insensitive e mais variações
+            const submissionIdIndex = this.findColumnIndex(headers, [
+                'Submission ID', 'submission id', 'submissionid', 'SubmissionID', 
+                'ID de envio', 'id_envio'
+            ]);
+            const timestampIndex = this.findColumnIndex(headers, [
+                'Submitted at', 'submitted at', 'timestamp', 'data', 'Data'
+            ]);
+            const nameIndex = this.findColumnIndex(headers, [
+                'Qual o seu nome?', 'nome', 'name', 'qual seu nome', 'Nome'
+            ]);
+            const emailIndex = this.findColumnIndex(headers, [
+                'Qual o seu e-mail', 'email', 'e-mail', 'Email', 'E-mail'
+            ]);
+            
+            console.log(`📍 Índices encontrados: Submission=${submissionIdIndex}, Name=${nameIndex}, Email=${emailIndex}`);
             
             if (submissionIdIndex === -1) {
-                throw new Error('Coluna Submission ID não encontrada');
+                console.error('❌ Headers disponíveis:', headers);
+                throw new Error('Coluna Submission ID não encontrada. Verificar estrutura da planilha.');
             }
             
             for (let i = 1; i < lines.length; i++) {
@@ -147,7 +166,8 @@ class TallySync {
                 
                 if (!columns[submissionIdIndex]) continue;
                 
-                const completouTeste = columns[30] && columns[30].trim() !== '';
+                // CORRIGIDO: Usa a variável dinâmica
+                const completouTeste = columns[this.lastQuestionColumn] && columns[this.lastQuestionColumn].trim() !== '';
                 
                 const userData = {
                     nome: columns[nameIndex] || 'Nome não informado',
@@ -172,6 +192,7 @@ class TallySync {
                 users.push(userData);
             }
             
+            console.log(`✅ Processados ${users.length} usuários da planilha`);
             return users;
             
         } catch (error) {
@@ -185,8 +206,12 @@ class TallySync {
             const index = headers.findIndex(header => 
                 header && header.toLowerCase().includes(name.toLowerCase())
             );
-            if (index !== -1) return index;
+            if (index !== -1) {
+                console.log(`✅ Coluna "${name}" encontrada no índice ${index}`);
+                return index;
+            }
         }
+        console.log(`❌ Nenhuma das variações encontrada:`, possibleNames);
         return -1;
     }
     
