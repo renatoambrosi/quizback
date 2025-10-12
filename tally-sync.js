@@ -9,7 +9,7 @@ class TallySync {
         );
         
         // Configurações do projeto
-        this.tableName = process.env.SUPABASE_TABLE_NAME || 'base';
+        this.tableName = process.env.SUPABASE_TABLE_NAME || 'users_teste';
         
         console.log(`🔧 TallySync inicializado:`);
         console.log(`🗃️ Tabela: ${this.tableName}`);
@@ -48,16 +48,16 @@ class TallySync {
             console.log(`🔍 data.email:`, data.email); 
             console.log(`🔍 data.uid:`, data.uid);
 
-            // Mapear campos conforme escopo definido
+            // Mapear campos conforme nova estrutura da tabela
             const userData = {
                 uid: data.uid,                              // UID direto
                 nome: data.respostas[0]?.trim(),            // Nome = posição 0 do array
-                'e-mail': data.respostas[1]?.trim(),        // Email = posição 1 do array  
-                data_registro_inicial: new Date().toISOString(), // Data atual
-                iniciar_o_teste: true,
-                concluido_o_teste: true,
-                status_pagamento_teste: 'AGUARDANDO',
-                aceita_receber_emails: true
+                email: data.respostas[1]?.trim(),           // Email = posição 1 do array  
+                data_registro: new Date().toISOString(),    // Data atual (corrigido)
+                iniciar_teste: true,                       // Corrigido: sem "_o_"
+                concluir_teste: true,                      // Corrigido: sem "do_o_"
+                status_pgto_teste: 'AGUARDANDO',           // Corrigido: pgto em vez de pagamento
+                aceita_emails: true                        // Corrigido: sem "_receber_"
             };
             
             console.log(`🗃️ Inserindo no Supabase:`, userData);
@@ -94,11 +94,11 @@ class TallySync {
             
             // 2. Preparar dados de atualização
             const updateData = {
-                status_pagamento_teste: 'PAGO',
-                valor_pago: '18,81',  // Valor fixo conforme escopo
-                dados_pgto_teste: new Date().toISOString(),
-                resultado_do_teste: resultadoTeste,
-                link_do_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}`
+                status_pgto_teste: 'PAGO',                 // Corrigido: pgto em vez de pagamento
+                valor_pgto_teste: '18,81',                 // Corrigido: nome do campo
+                data_pgto_teste: new Date().toISOString(), // Corrigido: data_pgto_teste
+                resultado_teste: resultadoTeste,           // Corrigido: sem "_do_"
+                link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}` // Corrigido: sem "_do_"
             };
             
             console.log(`🔄 Atualizando dados:`, updateData);
