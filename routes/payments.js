@@ -79,6 +79,113 @@ router.get('/debug-table', async (req, res) => {
 });
 
 // ============================================
+// LISTAR USUÁRIOS - TODOS OS CAMPOS (PARA INTEGRAÇÕES)
+// ============================================
+router.get('/users', async (req, res) => {
+    try {
+        console.log('📋 Listando TODOS os usuários com TODOS os campos...');
+        
+        // Parâmetros opcionais para facilitar consultas
+        const { 
+            page = 1, 
+            limit = 100,           // Limite maior por padrão
+            status = null,
+            search = null,
+            order_by = 'created_at',
+            order_direction = 'desc'
+        } = req.query;
+        
+        let query = tallySync.supabase
+            .from('users_teste')
+            .select(`
+                id,
+                uid,
+                nome,
+                email,
+                whatsapp,
+                data_registro,
+                fonte_trafego,
+                iniciar_teste,
+                concluir_teste,
+                aceita_emails,
+                resultado_teste,
+                link_resultado,
+                status_pgto_teste,
+                data_pgto_teste,
+                valor_pgto_teste,
+                created_at,
+                updated_at
+            `);
+        
+        // Filtros opcionais
+        if (status) {
+            query = query.eq('status_pgto_teste', status);
+        }
+        
+        if (search) {
+            query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%,uid.ilike.%${search}%`);
+        }
+        
+        // Ordenação dinâmica
+        const ascending = order_direction.toLowerCase() === 'asc';
+        query = query.order(order_by, { ascending });
+        
+        // Paginação
+        query = query.range((page - 1) * limit, page * limit - 1);
+        
+        const { data, error } = await query;
+        
+        if (error) {
+            console.error('❌ Erro ao listar usuários:', error);
+            throw error;
+        }
+        
+        // Contar total para paginação
+        const { count: totalCount } = await tallySync.supabase
+            .from('users_teste')
+            .select('*', { count: 'exact', head: true });
+        
+        console.log(`✅ ${data.length} usuários retornados de ${totalCount} total`);
+        
+        res.status(200).json({
+            success: true,
+            data: data,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total_records: totalCount,
+                total_pages: Math.ceil(totalCount / limit),
+                has_next: (page * limit) < totalCount,
+                has_previous: page > 1
+            },
+            filters_applied: {
+                status: status || 'todos',
+                search: search || 'sem_filtro',
+                order_by,
+                order_direction
+            },
+            available_fields: [
+                'id', 'uid', 'nome', 'email', 'whatsapp', 'data_registro',
+                'fonte_trafego', 'iniciar_teste', 'concluir_teste', 
+                'aceita_emails', 'resultado_teste', 'link_resultado',
+                'status_pgto_teste', 'data_pgto_teste', 'valor_pgto_teste',
+                'created_at', 'updated_at'
+            ],
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro no endpoint /users:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            message: 'Erro ao buscar usuários para integração',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
 // ============================================
 
