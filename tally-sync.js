@@ -44,7 +44,7 @@ class TallySync {
                 'e-mail': data.email,                         // Coluna E
                 data_registro_inicial: data.data_registro,   // Coluna C
                 iniciar_o_teste: true,
-                concluido_o_teste: true,
+                'concluído_o_teste': true,
                 status_pagamento_teste: 'AGUARDANDO',
                 aceita_receber_emails: true
             };
