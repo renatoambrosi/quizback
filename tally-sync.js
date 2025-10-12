@@ -20,22 +20,28 @@ class TallySync {
     // FASE 1: BUSCAR USUÁRIO POR UID
     // ============================================
     async getUserByUID(uid) {
+        console.log(`🚀 INÍCIO FASE 1 - UID: ${uid}`);
+        
         try {
             console.log(`📥 FASE 1: Buscando dados para UID: ${uid}`);
             
             // Usar Google Apps Script
             const endpoint = `https://script.google.com/macros/s/AKfycbwIocR389XiYKqXue45giqDcwGugGX_STHAaaypExqs9yUIAAA4w4hYWQyGqiAb3Z7u/exec?uid=${uid}`;
             
-            console.log(`🌐 Consultando Google Apps Script...`);
+            console.log(`🌐 Consultando: ${endpoint}`);
+            console.log(`🔄 Fazendo fetch...`);
             
             const response = await fetch(endpoint, { method: "get" });
+            console.log(`📡 Response status: ${response.status}`);
             
             if (!response.ok) {
+                console.log(`❌ Response não OK: ${response.status} ${response.statusText}`);
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
+            console.log(`🔄 Fazendo parse JSON...`);
             const data = await response.json();
-            console.log(`📊 Dados recebidos da planilha COMPLETOS:`, JSON.stringify(data, null, 2));
+            console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
             console.log(`🔍 Tipo de dados:`, typeof data);
             console.log(`🔍 Keys disponíveis:`, Object.keys(data || {}));
             console.log(`🔍 data.nome:`, data.nome);
@@ -46,8 +52,8 @@ class TallySync {
             const userData = {
                 uid: data.uid,                              // Coluna A
                 nome: data.nome,                            // Coluna D
-                'e-mail': data.email,                         // Coluna E
-                data_registro_inicial: data.data_registro,   // Coluna C
+                'e-mail': data.email,                       // Coluna E
+                data_registro_inicial: data.data_registro,  // Coluna C
                 iniciar_o_teste: true,
                 concluido_o_teste: true,
                 status_pagamento_teste: 'AGUARDANDO',
@@ -63,6 +69,7 @@ class TallySync {
                 .select();
                 
             if (error) {
+                console.log(`❌ Erro Supabase:`, error);
                 throw error;
             }
             
