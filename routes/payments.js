@@ -17,7 +17,7 @@ async function syncTallyData(uid, transactionAmount) {
     try {
         console.log(`🔄 Iniciando sincronização Tally para UID: ${uid}`);
         
-        const result = await tallySync.syncPaymentUser(uid, transactionAmount);
+        const result = await tallySync.syncData();
         
         if (result) {
             console.log(`✅ Sincronização OK: UID=${uid}, Valor=${transactionAmount}`);
