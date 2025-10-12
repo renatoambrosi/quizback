@@ -48,6 +48,37 @@ router.post('/sync-phase1', async (req, res) => {
 });
 
 // ============================================
+// DEBUG: VERIFICAR TABELA SUPABASE
+// ============================================
+router.get('/debug-table', async (req, res) => {
+    try {
+        console.log('🔍 Verificando estrutura da tabela...');
+        
+        // Buscar alguns registros para ver a estrutura
+        const { data, error } = await tallySync.supabase
+            .from('base')
+            .select('*')
+            .limit(3);
+            
+        if (error) {
+            return res.json({ error: error.message });
+        }
+        
+        const colunas = data.length > 0 ? Object.keys(data[0]) : [];
+        
+        res.json({
+            message: 'Estrutura da tabela base',
+            total_registros: data.length,
+            colunas_existentes: colunas,
+            exemplo_dados: data
+        });
+        
+    } catch (error) {
+        res.json({ debug_error: error.message });
+    }
+});
+
+// ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
 // ============================================
 
