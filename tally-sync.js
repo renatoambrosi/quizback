@@ -41,7 +41,7 @@ class TallySync {
             const userData = {
                 uid: data.uid,                              // Coluna A
                 nome: data.nome,                            // Coluna D
-                email: data.email,                          // Coluna E
+                e-mail: data.email,                          // Coluna E
                 data_registro_inicial: data.data_registro,   // Coluna C
                 iniciar_o_teste: true,
                 concluido_o_teste: true,
