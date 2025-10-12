@@ -56,7 +56,7 @@ router.get('/debug-table', async (req, res) => {
         
         // Buscar alguns registros para ver a estrutura (CORRIGIDO: nome da nova tabela)
         const { data, error } = await tallySync.supabase
-            .from('base')
+            .from('users_teste')
             .select('*')
             .limit(3);
             
