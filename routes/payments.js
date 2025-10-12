@@ -377,8 +377,7 @@ router.post('/webhook', async (req, res) => {
                         console.error('❌ Erro Pushover PIX:', error);
                     }
 
-                    // SINCRONIZAÇÃO TALLY -> SUPABASE
-                    syncTallyData(paymentDetails.external_reference, paymentDetails.transaction_amount).catch(() => {});
+                    // TODO: FASE 2 - Implementar sync após pagamento aprovado
 
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
