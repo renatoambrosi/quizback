@@ -54,9 +54,9 @@ router.get('/debug-table', async (req, res) => {
     try {
         console.log('🔍 Verificando estrutura da tabela...');
         
-        // Buscar alguns registros para ver a estrutura
+        // Buscar alguns registros para ver a estrutura (CORRIGIDO: nome da nova tabela)
         const { data, error } = await tallySync.supabase
-            .from('base')
+            .from('users_teste')
             .select('*')
             .limit(3);
             
@@ -67,7 +67,7 @@ router.get('/debug-table', async (req, res) => {
         const colunas = data.length > 0 ? Object.keys(data[0]) : [];
         
         res.json({
-            message: 'Estrutura da tabela base',
+            message: 'Estrutura da tabela users_teste',
             total_registros: data.length,
             colunas_existentes: colunas,
             exemplo_dados: data
