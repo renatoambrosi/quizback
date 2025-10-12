@@ -50,10 +50,10 @@ class TallySync {
 
             // Mapear campos conforme escopo definido
             const userData = {
-                uid: data.uid,                              // Coluna A
-                nome: data.nome,                            // Coluna D
-                'e-mail': data.email,                       // Coluna E
-                data_registro_inicial: data.data_registro,  // Coluna C
+                uid: data.uid,                              // UID direto
+                nome: data.respostas[0]?.trim(),            // Nome = posição 0 do array
+                'e-mail': data.respostas[1]?.trim(),        // Email = posição 1 do array  
+                data_registro_inicial: new Date().toISOString(), // Data atual
                 iniciar_o_teste: true,
                 concluido_o_teste: true,
                 status_pagamento_teste: 'AGUARDANDO',
