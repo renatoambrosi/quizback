@@ -35,8 +35,13 @@ class TallySync {
             }
             
             const data = await response.json();
-            console.log(`📊 Dados recebidos da planilha:`, data);
-            
+            console.log(`📊 Dados recebidos da planilha COMPLETOS:`, JSON.stringify(data, null, 2));
+            console.log(`🔍 Tipo de dados:`, typeof data);
+            console.log(`🔍 Keys disponíveis:`, Object.keys(data || {}));
+            console.log(`🔍 data.nome:`, data.nome);
+            console.log(`🔍 data.email:`, data.email); 
+            console.log(`🔍 data.uid:`, data.uid);
+
             // Mapear campos conforme escopo definido
             const userData = {
                 uid: data.uid,                              // Coluna A
