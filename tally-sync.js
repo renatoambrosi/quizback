@@ -53,7 +53,7 @@ class TallySync {
                 uid: data.uid,                              // UID direto
                 nome: data.respostas[0]?.trim(),            // Nome = posição 0 do array
                 email: data.respostas[1]?.trim(),           // Email = posição 1 do array  
-                data_registro: new Date().toISOString(),    // Data atual (corrigido)
+                data_registro: data.respostas[2],           // Data da planilha
                 iniciar_teste: true,                       // Corrigido: sem "_o_"
                 concluir_teste: true,                      // Corrigido: sem "do_o_"
                 status_pgto_teste: 'AGUARDANDO',           // Corrigido: pgto em vez de pagamento
