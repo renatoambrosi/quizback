@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const axios = require('axios');
 
 class TallySync {
     constructor() {
@@ -29,18 +30,18 @@ class TallySync {
             const endpoint = `https://script.google.com/macros/s/AKfycbyK60u_BJFxEc573yD-LhwTJ_mDL4JxsOaZ2Pj7lkbo_k66lapaxx81Ey909-3UqFw6/exec?uid=${uid}`;
             
             console.log(`🌐 Consultando: ${endpoint}`);
-            console.log(`🔄 Fazendo fetch...`);
+            console.log(`🔄 Fazendo requisição com axios...`);
             
-            const response = await fetch(endpoint, { method: "get" });
+            const response = await axios.get(endpoint);
             console.log(`📡 Response status: ${response.status}`);
             
-            if (!response.ok) {
+            if (response.status !== 200) {
                 console.log(`❌ Response não OK: ${response.status} ${response.statusText}`);
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            console.log(`🔄 Fazendo parse JSON...`);
-            const data = await response.json();
+            console.log(`🔄 Dados recebidos do axios...`);
+            const data = response.data; // Axios já faz parse automático
             console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
             console.log(`🔍 Tipo de dados:`, typeof data);
             console.log(`🔍 Keys disponíveis:`, Object.keys(data || {}));
@@ -124,7 +125,7 @@ class TallySync {
     }
 
     // ============================================
-    // SCRAPING DA PÁGINA DE RESULTADO
+    // SCRAPING DA PÁGINA DE RESULTADO WIX
     // ============================================
     async getResultadoTeste(uid) {
         try {
@@ -132,14 +133,19 @@ class TallySync {
             
             const url = `https://www.suellenseragi.com.br/resultado1?uid=${uid}`;
             
-            // Fazer fetch da página
-            const response = await fetch(url);
+            // Fazer requisição da página com axios
+            const response = await axios.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                },
+                timeout: 10000
+            });
             
-            if (!response.ok) {
+            if (response.status !== 200) {
                 throw new Error(`HTTP ${response.status} ao acessar ${url}`);
             }
             
-            const html = await response.text();
+            const html = response.data; // Axios retorna HTML como string
             
             // Buscar #diagnosticoEnergia no HTML
             // Método simples: regex para encontrar o texto
