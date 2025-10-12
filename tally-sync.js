@@ -26,7 +26,7 @@ class TallySync {
             console.log(`📥 FASE 1: Buscando dados para UID: ${uid}`);
             
             // Usar Google Apps Script
-            const endpoint = `https://script.google.com/macros/s/AKfycbwIocR389XiYKqXue45giqDcwGugGX_STHAaaypExqs9yUIAAA4w4hYWQyGqiAb3Z7u/exec?uid=${uid}`;
+            const endpoint = `https://script.google.com/macros/s/AKfycbyK60u_BJFxEc573yD-LhwTJ_mDL4JxsOaZ2Pj7lkbo_k66lapaxx81Ey909-3UqFw6/exec?uid=${uid}`;
             
             console.log(`🌐 Consultando: ${endpoint}`);
             console.log(`🔄 Fazendo fetch...`);
