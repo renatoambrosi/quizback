@@ -415,7 +415,27 @@ router.post('/webhook', async (req, res) => {
                         console.error('❌ Erro Pushover PIX:', error);
                     }
 
-                    // TODO: FASE 2 - Implementar sync após pagamento aprovado
+                    // ============================================
+                    // FASE 2: SYNC APÓS PAGAMENTO APROVADO
+                    // ============================================
+                    try {
+                        console.log(`💳 FASE 2: Iniciando para UID: ${paymentDetails.external_reference}`);
+    
+                        await tallySync.updateUserAfterPayment(
+                            paymentDetails.external_reference,
+                            {
+                                transaction_amount: paymentDetails.transaction_amount,
+                                date_approved: paymentDetails.date_approved,
+                                payment_id: paymentDetails.id
+                            }
+                        );
+        
+                        console.log(`✅ FASE 2: Concluída para UID: ${paymentDetails.external_reference}`);
+    
+                    } catch (syncError) {
+                        console.error('❌ Erro FASE 2:', syncError);
+                        // Não quebra o webhook se der erro no sync
+                    }
 
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
