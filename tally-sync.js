@@ -9,7 +9,7 @@ class TallySync {
         );
         
         // Configurações do projeto
-        this.tableName = process.env.SUPABASE_TABLE_NAME || 'users_teste';
+        this.tableName = process.env.SUPABASE_TABLE_NAME || 'base';
         
         console.log(`🔧 TallySync inicializado:`);
         console.log(`🗃️ Tabela: ${this.tableName}`);
