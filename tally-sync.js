@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const axios = require('axios');
 
 class TallySync {
     constructor() {
@@ -30,35 +29,30 @@ class TallySync {
             const endpoint = `https://script.google.com/macros/s/AKfycbyK60u_BJFxEc573yD-LhwTJ_mDL4JxsOaZ2Pj7lkbo_k66lapaxx81Ey909-3UqFw6/exec?uid=${uid}`;
             
             console.log(`🌐 Consultando: ${endpoint}`);
-            console.log(`🔄 Fazendo requisição com axios...`);
+            console.log(`🔄 Fazendo fetch...`);
             
-            const response = await axios.get(endpoint);
+            const response = await fetch(endpoint, { method: "get" });
             console.log(`📡 Response status: ${response.status}`);
             
-            if (response.status !== 200) {
+            if (!response.ok) {
                 console.log(`❌ Response não OK: ${response.status} ${response.statusText}`);
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            console.log(`🔄 Dados recebidos do axios...`);
-            const data = response.data; // Axios já faz parse automático
+            console.log(`🔄 Fazendo parse JSON...`);
+            const data = await response.json();
             console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
-            console.log(`🔍 Tipo de dados:`, typeof data);
-            console.log(`🔍 Keys disponíveis:`, Object.keys(data || {}));
-            console.log(`🔍 data.nome:`, data.nome);
-            console.log(`🔍 data.email:`, data.email); 
-            console.log(`🔍 data.uid:`, data.uid);
 
             // Mapear campos conforme nova estrutura da tabela
             const userData = {
-                uid: data.uid,                              // UID direto
-                nome: data.respostas[0]?.trim(),            // Nome = posição 0 do array
-                email: data.respostas[1]?.trim(),           // Email = posição 1 do array  
-                data_registro: data.respostas[2],           // Data da planilha
-                iniciar_teste: true,                       // Corrigido: sem "_o_"
-                concluir_teste: true,                      // Corrigido: sem "do_o_"
-                status_pgto_teste: 'AGUARDANDO',           // Corrigido: pgto em vez de pagamento
-                aceita_emails: true                        // Corrigido: sem "_receber_"
+                uid: data.uid,
+                nome: data.respostas[0]?.trim(),
+                email: data.respostas[1]?.trim(),
+                data_registro: data.respostas[2],
+                iniciar_teste: true,
+                concluir_teste: true,
+                status_pgto_teste: 'AGUARDANDO',
+                aceita_emails: true
             };
             
             console.log(`🗃️ Inserindo no Supabase:`, userData);
@@ -95,11 +89,11 @@ class TallySync {
             
             // 2. Preparar dados de atualização
             const updateData = {
-                status_pgto_teste: 'PAGO',                 // Corrigido: pgto em vez de pagamento
-                valor_pgto_teste: '18,81',                 // Corrigido: nome do campo
-                data_pgto_teste: new Date().toISOString(), // Corrigido: data_pgto_teste
-                resultado_teste: resultadoTeste,           // Corrigido: sem "_do_"
-                link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}` // Corrigido: sem "_do_"
+                status_pgto_teste: 'PAGO',
+                valor_pgto_teste: '18,81',
+                data_pgto_teste: new Date().toISOString(),
+                resultado_teste: resultadoTeste,
+                link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}`
             };
             
             console.log(`🔄 Atualizando dados:`, updateData);
@@ -125,7 +119,7 @@ class TallySync {
     }
 
     // ============================================
-    // SCRAPING DA PÁGINA DE RESULTADO WIX
+    // SCRAPING DA PÁGINA DE RESULTADO
     // ============================================
     async getResultadoTeste(uid) {
         try {
@@ -133,22 +127,16 @@ class TallySync {
             
             const url = `https://www.suellenseragi.com.br/resultado1?uid=${uid}`;
             
-            // Fazer requisição da página com axios
-            const response = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                },
-                timeout: 10000
-            });
+            // Fazer fetch da página
+            const response = await fetch(url);
             
-            if (response.status !== 200) {
+            if (!response.ok) {
                 throw new Error(`HTTP ${response.status} ao acessar ${url}`);
             }
             
-            const html = response.data; // Axios retorna HTML como string
+            const html = await response.text();
             
             // Buscar #diagnosticoEnergia no HTML
-            // Método simples: regex para encontrar o texto
             const regex = /#diagnosticoEnergia[^>]*>([^<]+)</i;
             const match = html.match(regex);
             
@@ -182,7 +170,6 @@ class TallySync {
             
         } catch (error) {
             console.error('❌ Erro no scraping:', error);
-            // Retornar valor padrão em caso de erro
             return 'Erro ao obter resultado';
         }
     }
