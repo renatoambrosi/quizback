@@ -10,6 +10,44 @@ const TallySync = require('../tally-sync');
 const tallySync = new TallySync();
 
 // ============================================
+// FASE 1: SYNC APÓS SUBMISSÃO TALLY
+// ============================================
+router.post('/sync-phase1', async (req, res) => {
+    try {
+        const { uid } = req.body;
+        
+        console.log(`🎯 FASE 1: Iniciando sync para UID: ${uid}`);
+        
+        if (!uid) {
+            console.log('❌ FASE 1: UID não fornecido');
+            return res.status(400).json({ 
+                success: false, 
+                error: 'UID é obrigatório' 
+            });
+        }
+        
+        // Buscar dados do usuário usando Google Apps Script
+        const userData = await tallySync.getUserByUID(uid);
+        
+        console.log(`✅ FASE 1: Dados obtidos para UID ${uid}`);
+        
+        res.status(200).json({
+            success: true,
+            message: 'FASE 1: Usuário registrado com sucesso',
+            uid: uid,
+            data: userData
+        });
+        
+    } catch (error) {
+        console.error('❌ ERRO FASE 1:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
 // ============================================
 
