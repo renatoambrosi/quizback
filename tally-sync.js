@@ -83,7 +83,7 @@ class TallySync {
                 uid: data.uid,
                 nome: data.respostas[0]?.trim(),
                 email: data.respostas[1]?.trim(),
-                data_registro: this.getBrazilianDateTime(),
+                data_registro: data.respostas[2]?.trim(), // ✅ Data do Tally (posição 2)
                 iniciar_teste: true,
                 concluir_teste: true,
                 status_pgto_teste: 'AGUARDANDO',
@@ -292,16 +292,16 @@ class TallySync {
                 "Prosperidade": 0
             };
 
-            // 4. Processar respostas (pular nome e email - posições 0 e 1)
+            // 4. Processar respostas (pular nome, email e data - posições 0, 1 e 2)
             let respostasProcessadas = 0;
-            for (let i = 2; i < respostas.length; i++) { // Começar da posição 2 (após nome e email)
+            for (let i = 3; i < respostas.length; i++) { // Começar da posição 3 (após nome, email e data)
                 const resposta = respostas[i];
                 const tag = mapaRespostas[resposta];
                 
                 if (tag) {
                     contagem[tag]++;
                     respostasProcessadas++;
-                    console.log(`✅ Resposta ${i-1}: "${resposta}" → ${tag}`);
+                    console.log(`✅ Resposta ${i-2}: "${resposta}" → ${tag}`); // Ajustado para mostrar numeração correta
                 } else {
                     console.warn(`⚠️ Resposta não mapeada: "${resposta}"`);
                 }
