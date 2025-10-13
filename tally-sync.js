@@ -17,6 +17,24 @@ class TallySync {
     }
 
     // ============================================
+    // FUNÇÃO PARA DATA/HORA BRASILEIRA (AMBAS FASES)
+    // ============================================
+    getBrazilianDateTime() {
+        const now = new Date();
+        // Converter para GMT-3 (Brasil)
+        const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+        
+        const day = String(brazilTime.getUTCDate()).padStart(2, '0');
+        const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
+        const year = brazilTime.getUTCFullYear();
+        const hours = String(brazilTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(brazilTime.getUTCSeconds()).padStart(2, '0');
+        
+        return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // ============================================
     // FASE 1: BUSCAR USUÁRIO POR UID
     // ============================================
     async getUserByUID(uid) {
@@ -43,28 +61,12 @@ class TallySync {
             const data = await response.json();
             console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
 
-            // Função para obter data/hora no fuso brasileiro (GMT-3)
-            const getBrazilianDateTime = () => {
-                const now = new Date();
-                // Converter para GMT-3 (Brasil)
-                const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
-                
-                const day = String(brazilTime.getUTCDate()).padStart(2, '0');
-                const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
-                const year = brazilTime.getUTCFullYear();
-                const hours = String(brazilTime.getUTCHours()).padStart(2, '0');
-                const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
-                const seconds = String(brazilTime.getUTCSeconds()).padStart(2, '0');
-                
-                return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
-            };
-
             // Mapear campos conforme nova estrutura da tabela
             const userData = {
                 uid: data.uid,
                 nome: data.respostas[0]?.trim(),
                 email: data.respostas[1]?.trim(),
-                data_registro: getBrazilianDateTime(),
+                data_registro: this.getBrazilianDateTime(),
                 iniciar_teste: true,
                 concluir_teste: true,
                 status_pgto_teste: 'AGUARDANDO',
@@ -73,7 +75,7 @@ class TallySync {
             
             console.log(`🗃️ Inserindo no Supabase:`, userData);
             
-            // Inserir no Supabase - Inserir ou atualizar no Supabase (UPSERT)
+            // Inserir ou atualizar no Supabase (UPSERT)
             const { data: insertedData, error } = await this.supabase
                 .from(this.tableName)
                 .upsert(userData, { onConflict: 'uid' })
@@ -107,7 +109,7 @@ class TallySync {
             const updateData = {
                 status_pgto_teste: 'PAGO',
                 valor_pgto_teste: '18,81',
-                data_pgto_teste: new Date().toISOString(),
+                data_pgto_teste: this.getBrazilianDateTime(),
                 resultado_teste: resultadoTeste,
                 link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}`
             };
