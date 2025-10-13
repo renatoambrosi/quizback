@@ -35,6 +35,23 @@ class TallySync {
     }
 
     // ============================================
+    // FUNÇÃO PARA CONVERTER DATA DO MP PARA BRASILEIRO
+    // ============================================
+    convertMPDateToBrazilian(mpDate) {
+        const date = new Date(mpDate);
+        const brazilTime = new Date(date.getTime() - (3 * 60 * 60 * 1000));
+        
+        const day = String(brazilTime.getUTCDate()).padStart(2, '0');
+        const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
+        const year = brazilTime.getUTCFullYear();
+        const hours = String(brazilTime.getUTCHours()).padStart(2, '0');
+        const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(brazilTime.getUTCSeconds()).padStart(2, '0');
+        
+        return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // ============================================
     // FASE 1: BUSCAR USUÁRIO POR UID
     // ============================================
     async getUserByUID(uid) {
@@ -109,7 +126,9 @@ class TallySync {
             const updateData = {
                 status_pgto_teste: 'PAGO',
                 valor_pgto_teste: '18,81',
-                data_pgto_teste: this.getBrazilianDateTime(),
+                data_pgto_teste: paymentData.date_approved ? 
+                    this.convertMPDateToBrazilian(paymentData.date_approved) : 
+                    this.getBrazilianDateTime(),
                 resultado_teste: resultadoTeste,
                 link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}`
             };
