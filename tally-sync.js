@@ -164,27 +164,35 @@ class TallySync {
             
             const url = `https://www.suellenseragi.com.br/resultado1?uid=${uid}`;
             
-            // Fazer fetch da página
-            const response = await fetch(url);
+            // Tentativas com delay progressivo
+            const delays = [3000, 7000, 5000]; // 3s, +7s, +5s = total 15s
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ao acessar ${url}`);
-            }
-            
-            const html = await response.text();
-            
-            // Buscar #diagnosticoEnergia no HTML
-            const regex = /#diagnosticoEnergia[^>]*>([^<]+)</i;
-            const match = html.match(regex);
-            
-            if (match && match[1]) {
-                const resultado = match[1].trim();
-                console.log(`✅ Resultado extraído: ${resultado}`);
-                return resultado;
-            } else {
-                console.log(`⚠️ #diagnosticoEnergia não encontrado, tentando método alternativo...`);
+            for (let i = 0; i < delays.length; i++) {
+                console.log(`⏳ Aguardando ${delays[i]/1000}s para cálculo completar (tentativa ${i+1}/3)...`);
                 
-                // Método alternativo: buscar por padrões conhecidos
+                // Aguardar o tempo específico
+                await new Promise(resolve => setTimeout(resolve, delays[i]));
+                
+                // Fazer requisição para ver se já calculou
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.log(`❌ Response não OK na tentativa ${i+1}: ${response.status}`);
+                    continue;
+                }
+                
+                const html = await response.text();
+                
+                // Buscar #diagnosticoEnergia no HTML
+                const regex = /#diagnosticoEnergia[^>]*>([^<]+)</i;
+                const match = html.match(regex);
+                
+                if (match && match[1] && match[1].trim() !== 'Carregando resultado...' && match[1].trim() !== '') {
+                    const resultado = match[1].trim();
+                    console.log(`✅ Resultado extraído após ${(delays.slice(0, i+1).reduce((a,b) => a+b, 0))/1000}s: ${resultado}`);
+                    return resultado;
+                }
+                
+                // Método alternativo: buscar por padrões conhecidos no HTML
                 const padroes = [
                     'Energia do Medo',
                     'Energia da Desordem', 
@@ -197,19 +205,24 @@ class TallySync {
                 
                 for (const padrao of padroes) {
                     if (html.includes(padrao)) {
-                        console.log(`✅ Resultado encontrado por padrão: ${padrao}`);
+                        console.log(`✅ Resultado encontrado por padrão após ${(delays.slice(0, i+1).reduce((a,b) => a+b, 0))/1000}s: ${padrao}`);
                         return padrao;
                     }
                 }
                 
-                throw new Error('Resultado do teste não encontrado na página');
+                console.log(`🔄 Tentativa ${i+1}: Ainda calculando...`);
             }
+            
+            // Se chegou até aqui, não conseguiu obter resultado
+            console.log(`❌ Não foi possível obter resultado após 15 segundos`);
+            throw new Error('Resultado do teste não encontrado após múltiplas tentativas');
             
         } catch (error) {
             console.error('❌ Erro no scraping:', error);
             return 'Erro ao obter resultado';
         }
     }
+
 }
 
 module.exports = TallySync;
