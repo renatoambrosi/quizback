@@ -296,7 +296,7 @@ class TallySync {
             
             // Preparar dados para salvar no Supabase
             const userData = {
-                uid: tallyData.responseId || require('crypto').randomUUID(),
+                uid: tallyData.responseId,
                 nome: nome || 'Nome não informado',
                 email: email,
                 respostas: JSON.stringify(respostas),
