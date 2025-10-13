@@ -14,8 +14,7 @@ class TallySync {
         console.log(`🔧 TallySync inicializado:`);
         console.log(`🗃️ Tabela: ${this.tableName}`);
         console.log(`🌐 Supabase: ${process.env.SUPABASE_URL}`);
-    }
-    
+        
         // Mapeamento das 15 perguntas para energias
         this.mapaRespostas = {
             // PERGUNTA 1: Quando vejo alguém enriquecer sem valores ou princípios, sinto:
@@ -123,7 +122,8 @@ class TallySync {
             "Deixaria pouco, mas com orgulho de que conquistei com luta e honestidade.": "Medo",
             "A imagem de alguém que quis acertar embora nem sempre conseguisse.": "Validação"
         };
-    
+    }
+
     // ============================================
     // FUNÇÃO PARA DATA/HORA BRASILEIRA (AMBAS FASES)
     // ============================================
@@ -159,109 +159,6 @@ class TallySync {
         return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
     }
 
-    // ============================================
-    // FASE 1: BUSCAR USUÁRIO POR UID
-    // ============================================
-    async getUserByUID(uid) {
-        console.log(`🚀 INÍCIO FASE 1 - UID: ${uid}`);
-        
-        try {
-            console.log(`📥 FASE 1: Buscando dados para UID: ${uid}`);
-            
-            // Usar Google Apps Script
-            const endpoint = `https://script.google.com/macros/s/AKfycbyK60u_BJFxEc573yD-LhwTJ_mDL4JxsOaZ2Pj7lkbo_k66lapaxx81Ey909-3UqFw6/exec?uid=${uid}`;
-            
-            console.log(`🌐 Consultando: ${endpoint}`);
-            console.log(`🔄 Fazendo fetch...`);
-            
-            const response = await fetch(endpoint, { method: "get" });
-            console.log(`📡 Response status: ${response.status}`);
-            
-            if (!response.ok) {
-                console.log(`❌ Response não OK: ${response.status} ${response.statusText}`);
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            console.log(`🔄 Fazendo parse JSON...`);
-            const data = await response.json();
-            console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
-
-            // Mapear campos conforme nova estrutura da tabela
-            const userData = {
-                uid: data.uid,
-                nome: data.respostas[0]?.trim(),
-                email: data.respostas[1]?.trim(),
-                data_registro: this.getBrazilianDateTime(),
-                iniciar_teste: true,
-                concluir_teste: true,
-                status_pgto_teste: 'AGUARDANDO',
-                aceita_emails: true
-            };
-            
-            console.log(`🗃️ Inserindo no Supabase:`, userData);
-            
-            // Inserir ou atualizar no Supabase (UPSERT)
-            const { data: insertedData, error } = await this.supabase
-                .from(this.tableName)
-                .upsert(userData, { onConflict: 'uid' })
-                .select();
-                
-            if (error) {
-                console.log(`❌ Erro Supabase:`, error);
-                throw error;
-            }
-            
-            console.log(`✅ FASE 1: Usuário inserido com sucesso no Supabase`);
-            return insertedData[0];
-            
-        } catch (error) {
-            console.error('❌ Erro FASE 1 getUserByUID:', error);
-            throw error;
-        }
-    }
-
-    // ============================================
-    // FASE 2: ATUALIZAR APÓS PAGAMENTO + SCRAPING
-    // ============================================
-    async updateUserAfterPayment(uid, paymentData) {
-        try {
-            console.log(`💳 FASE 2: Atualizando usuário ${uid} após pagamento`);
-            
-            // 1. Fazer scraping da página de resultado
-            const resultadoTeste = await this.getResultadoTeste(uid);
-            
-            // 2. Preparar dados de atualização
-            const updateData = {
-                status_pgto_teste: 'PAGO',
-                valor_pgto_teste: '18,81',
-                data_pgto_teste: paymentData.date_approved ? 
-                    this.convertMPDateToBrazilian(paymentData.date_approved) : 
-                    this.getBrazilianDateTime(),
-                resultado_teste: resultadoTeste,
-                link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}`
-            };
-            
-            console.log(`🔄 Atualizando dados:`, updateData);
-            
-            // 3. Atualizar no Supabase
-            const { data, error } = await this.supabase
-                .from(this.tableName)
-                .update(updateData)
-                .eq('uid', uid)
-                .select();
-                
-            if (error) {
-                throw error;
-            }
-            
-            console.log(`✅ FASE 2: Usuário atualizado com sucesso`);
-            return data[0];
-            
-        } catch (error) {
-            console.error('❌ Erro FASE 2 updateUserAfterPayment:', error);
-            throw error;
-        }
-    }
     // ============================================
     // NOVA FUNÇÃO: CALCULAR ENERGIA DAS RESPOSTAS
     // ============================================
@@ -433,9 +330,123 @@ class TallySync {
         }
     }
 
+    // ============================================
+    // FASE 1: BUSCAR USUÁRIO POR UID (MÉTODO ANTIGO)
+    // ============================================
+    async getUserByUID(uid) {
+        console.log(`🚀 INÍCIO FASE 1 - UID: ${uid}`);
+        
+        try {
+            console.log(`📥 FASE 1: Buscando dados para UID: ${uid}`);
+            
+            // Usar Google Apps Script
+            const endpoint = `https://script.google.com/macros/s/AKfycbyK60u_BJFxEc573yD-LhwTJ_mDL4JxsOaZ2Pj7lkbo_k66lapaxx81Ey909-3UqFw6/exec?uid=${uid}`;
+            
+            console.log(`🌐 Consultando: ${endpoint}`);
+            console.log(`🔄 Fazendo fetch...`);
+            
+            const response = await fetch(endpoint, { method: "get" });
+            console.log(`📡 Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                console.log(`❌ Response não OK: ${response.status} ${response.statusText}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            console.log(`🔄 Fazendo parse JSON...`);
+            const data = await response.json();
+            console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
+
+            // Mapear campos conforme nova estrutura da tabela
+            const userData = {
+                uid: data.uid,
+                nome: data.respostas[0]?.trim(),
+                email: data.respostas[1]?.trim(),
+                data_registro: this.getBrazilianDateTime(),
+                iniciar_teste: true,
+                concluir_teste: true,
+                status_pgto_teste: 'AGUARDANDO',
+                aceita_emails: true
+            };
+            
+            console.log(`🗃️ Inserindo no Supabase:`, userData);
+            
+            // Inserir ou atualizar no Supabase (UPSERT)
+            const { data: insertedData, error } = await this.supabase
+                .from(this.tableName)
+                .upsert(userData, { onConflict: 'uid' })
+                .select();
+                
+            if (error) {
+                console.log(`❌ Erro Supabase:`, error);
+                throw error;
+            }
+            
+            console.log(`✅ FASE 1: Usuário inserido com sucesso no Supabase`);
+            return insertedData[0];
+            
+        } catch (error) {
+            console.error('❌ Erro FASE 1 getUserByUID:', error);
+            throw error;
+        }
+    }
 
     // ============================================
-    // SCRAPING DA PÁGINA DE RESULTADO
+    // FASE 2: ATUALIZAR APÓS PAGAMENTO (NOVA VERSÃO SEM SCRAPING)
+    // ============================================
+    async updateUserAfterPayment(uid, paymentData) {
+        try {
+            console.log(`💳 FASE 2: Atualizando usuário ${uid} após pagamento`);
+            
+            // Buscar dados do usuário no Supabase para pegar energia já calculada
+            const { data: userData, error: fetchError } = await this.supabase
+                .from(this.tableName)
+                .select('*')
+                .eq('uid', uid)
+                .single();
+            
+            if (fetchError || !userData) {
+                console.error('❌ Usuário não encontrado para atualizar:', fetchError);
+                throw new Error(`Usuário ${uid} não encontrado no banco`);
+            }
+            
+            console.log(`✅ Usuário encontrado. Energia já calculada: ${userData.energia_calculada}`);
+            
+            // Preparar dados de atualização (SEM SCRAPING)
+            const updateData = {
+                status_pgto_teste: 'PAGO',
+                valor_pgto_teste: '18,81',
+                data_pgto_teste: paymentData.date_approved ? 
+                    this.convertMPDateToBrazilian(paymentData.date_approved) : 
+                    this.getBrazilianDateTime(),
+                resultado_teste: userData.energia_calculada, // USA ENERGIA JÁ CALCULADA
+                link_resultado: `https://www.suellenseragi.com.br/resultado2?uid=${uid}`
+            };
+            
+            console.log(`🔄 Atualizando dados (SEM SCRAPING):`, updateData);
+            
+            // Atualizar no Supabase
+            const { data, error } = await this.supabase
+                .from(this.tableName)
+                .update(updateData)
+                .eq('uid', uid)
+                .select();
+                
+            if (error) {
+                throw error;
+            }
+            
+            console.log(`✅ FASE 2: Usuário atualizado com sucesso (RESULTADO INSTANTÂNEO)`);
+            return data[0];
+            
+        } catch (error) {
+            console.error('❌ Erro FASE 2 updateUserAfterPayment:', error);
+            throw error;
+        }
+    }
+
+    // ============================================
+    // SCRAPING DA PÁGINA DE RESULTADO (MÉTODO ANTIGO - MANTIDO PARA FALLBACK)
     // ============================================
     async getResultadoTeste(uid) {
         try {
@@ -443,27 +454,35 @@ class TallySync {
             
             const url = `https://www.suellenseragi.com.br/resultado1?uid=${uid}`;
             
-            // Fazer fetch da página
-            const response = await fetch(url);
+            // Tentativas com delay progressivo
+            const delays = [3000, 7000, 5000]; // 3s, +7s, +5s = total 15s
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ao acessar ${url}`);
-            }
-            
-            const html = await response.text();
-            
-            // Buscar #diagnosticoEnergia no HTML
-            const regex = /#diagnosticoEnergia[^>]*>([^<]+)</i;
-            const match = html.match(regex);
-            
-            if (match && match[1]) {
-                const resultado = match[1].trim();
-                console.log(`✅ Resultado extraído: ${resultado}`);
-                return resultado;
-            } else {
-                console.log(`⚠️ #diagnosticoEnergia não encontrado, tentando método alternativo...`);
+            for (let i = 0; i < delays.length; i++) {
+                console.log(`⏳ Aguardando ${delays[i]/1000}s para cálculo completar (tentativa ${i+1}/3)...`);
                 
-                // Método alternativo: buscar por padrões conhecidos
+                // Aguardar o tempo específico
+                await new Promise(resolve => setTimeout(resolve, delays[i]));
+                
+                // Fazer requisição para ver se já calculou
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.log(`❌ Response não OK na tentativa ${i+1}: ${response.status}`);
+                    continue;
+                }
+                
+                const html = await response.text();
+                
+                // Buscar #diagnosticoEnergia no HTML
+                const regex = /#diagnosticoEnergia[^>]*>([^<]+)</i;
+                const match = html.match(regex);
+                
+                if (match && match[1] && match[1].trim() !== 'Carregando resultado...' && match[1].trim() !== '') {
+                    const resultado = match[1].trim();
+                    console.log(`✅ Resultado extraído após ${(delays.slice(0, i+1).reduce((a,b) => a+b, 0))/1000}s: ${resultado}`);
+                    return resultado;
+                }
+                
+                // Método alternativo: buscar por padrões conhecidos no HTML
                 const padroes = [
                     'Energia do Medo',
                     'Energia da Desordem', 
@@ -476,13 +495,17 @@ class TallySync {
                 
                 for (const padrao of padroes) {
                     if (html.includes(padrao)) {
-                        console.log(`✅ Resultado encontrado por padrão: ${padrao}`);
+                        console.log(`✅ Resultado encontrado por padrão após ${(delays.slice(0, i+1).reduce((a,b) => a+b, 0))/1000}s: ${padrao}`);
                         return padrao;
                     }
                 }
                 
-                throw new Error('Resultado do teste não encontrado na página');
+                console.log(`🔄 Tentativa ${i+1}: Ainda calculando...`);
             }
+            
+            // Se chegou até aqui, não conseguiu obter resultado
+            console.log(`❌ Não foi possível obter resultado após 15 segundos`);
+            throw new Error('Resultado do teste não encontrado após múltiplas tentativas');
             
         } catch (error) {
             console.error('❌ Erro no scraping:', error);
