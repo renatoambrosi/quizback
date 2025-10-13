@@ -73,10 +73,10 @@ class TallySync {
             
             console.log(`🗃️ Inserindo no Supabase:`, userData);
             
-            // Inserir no Supabase
+            // Inserir no Supabase - Inserir ou atualizar no Supabase (UPSERT)
             const { data: insertedData, error } = await this.supabase
                 .from(this.tableName)
-                .insert(userData)
+                .upsert(userData, { onConflict: 'uid' })
                 .select();
                 
             if (error) {
