@@ -49,7 +49,6 @@ class TallySync {
                 // Converter para GMT-3 (Brasil)
                 const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
                 
-                // Formatar como yyyy-MM-dd HH:mm:ss (formato que Supabase entende)
                 const day = String(brazilTime.getUTCDate()).padStart(2, '0');
                 const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
                 const year = brazilTime.getUTCFullYear();
