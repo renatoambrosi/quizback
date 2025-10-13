@@ -15,7 +15,115 @@ class TallySync {
         console.log(`🗃️ Tabela: ${this.tableName}`);
         console.log(`🌐 Supabase: ${process.env.SUPABASE_URL}`);
     }
+    
+        // Mapeamento das 15 perguntas para energias
+        this.mapaRespostas = {
+            // PERGUNTA 1: Quando vejo alguém enriquecer sem valores ou princípios, sinto:
+            "Frustração. Parece que nada muda, já fiz o certo e o errado e não consegui nada.": "Desordem",
+            "Motivação, porque não existe verdade, apenas resultado.": "Autossuficiência",
+            "Decido estudar mais e subir do jeito certo, mas sem ingenuidade.": "Prosperidade",
+            "Se alguém consegue dessa forma, eu também posso, só que da forma certa.": "Validação",
+            "Raiva. É sempre assim: os bonzinhos só se ferram.": "Medo",
 
+            // PERGUNTA 2: Quando penso no meu potencial de gerar renda, sinto:
+            "Não sei nem por onde começar.": "Desordem",
+            "Duvido. Às vezes acho que minha realidade não permite isso.": "Medo",
+            "Acredito que posso crescer em qualquer lugar.": "Prosperidade",
+            "Sinto que preciso alcançar um certo nível grande para me sentir realizado e reconhecido.": "Validação",
+            "Tenho convicção de que, com foco e lógica, eu consigo.": "Autossuficiência",
+
+            // PERGUNTA 3: Se surge um conflito sério com alguém importante, eu:
+            "Deixo pra lá e sigo em frente para os meus objetivos.": "Autossuficiência",
+            "Converso com calma, busco entender o outro lado e não ver só o meu.": "Prosperidade",
+            "Falo demais ou fico no meu canto e acabo piorando a situação, sem querer.": "Desordem",
+            "Evito conversar por medo de desagradar ou ter conflito com a pessoa.": "Medo",
+            "Tento evitar confronto ou tento resolver mas fico chateado quando não consigo.": "Validação",
+
+            // PERGUNTA 4: Ao perceber sintomas físicos inesperados, eu:
+            "Torço e peço para me ajudarem ao máximo porque me sinto fragilizado.": "Validação",
+            "Procuro resolver sozinho com remédios por conta própria.": "Autossuficiência",
+            "Me preocupo mais do que deveria.": "Medo",
+            "Creio que está tudo bem, mas me cuido para garantir a boa recuperação.": "Prosperidade",
+            "Ignoro o máximo, até realmente eu precisar tratar.": "Desordem",
+
+            // PERGUNTA 5: Minha relação com exercícios físicos é:
+            "Considero fazer mesmo não gostando, pois tenho insatisfação ou vergonha do meu corpo.": "Validação",
+            "Começo e paro diversas vezes, sempre me perdendo na rotina.": "Desordem",
+            "Pratico com frequência e consciência, respeitando meus limites.": "Prosperidade",
+            "Não faço por desânimo, medo de lesões ou vergonha.": "Medo",
+            "Sou extremamente disciplinado.": "Autossuficiência",
+
+            // PERGUNTA 6: Como reajo ao perceber que preciso melhorar minha alimentação:
+            "Se realmente eu precisar, serei firme.": "Autossuficiência",
+            "Quando estou bem eu como bem. Mas quando fico mal eu desando.": "Validação",
+            "Faço ajustes graduais e consistentes.": "Prosperidade",
+            "Faço mudanças bruscas e acabo desistindo rapidamente.": "Desordem",
+            "Fico ansioso e tento mudar, mas não consigo.": "Medo",
+
+            // PERGUNTA 7: Quando analiso minhas dificuldades, eu:
+            "Costumo me sentir inútil e impotente para mudar as coisas.": "Validação",
+            "Sinto o quanto a vida não é justa.": "Autossuficiência",
+            "Lembro que eu sempre colho o que planto e fico em paz.": "Prosperidade",
+            "Acho muito difícil qualquer mudança.": "Medo",
+            "Me distraio fazendo várias coisas para não pensar nisso.": "Desordem",
+
+            // PERGUNTA 8: Se algo sai do meu controle, eu:
+            "Aceito com calma e reorganizo minhas ações com clareza.": "Prosperidade",
+            "Fico inquieto e incomodado com as coisas que me atrapalham.": "Validação",
+            "Fico ansioso pensando nas consequências negativas.": "Medo",
+            "Resolvo sozinho, pois não quero depender de ninguém.": "Autossuficiência",
+            "Me perco mentalmente, sem saber exatamente por onde recomeçar.": "Desordem",
+
+            // PERGUNTA 9: Quando preciso tomar uma decisão importante:
+            "Evito contrariar pessoas ao tomar decisões.": "Validação",
+            "Faço o que der na hora. Depois eu vejo se foi o certo.": "Desordem",
+            "Avalio rapidamente e tomo minha decisão.": "Autossuficiência",
+            "Adio até o último segundo.": "Medo",
+            "Coloco no papel, penso e ajo com o que tenho em mãos.": "Prosperidade",
+
+            // PERGUNTA 10: Como lido com os meus próprios erros:
+            "Realmente aprendi com eles.": "Prosperidade",
+            "Fico péssimo, me martirizando.": "Validação",
+            "Evito pensar nisso. Fico mal quando lembro.": "Desordem",
+            "Odeio errar. Mas as vezes acontece.": "Autossuficiência",
+            "Me culpo até hoje. Aquilo nunca deveria ter acontecido.": "Medo",
+
+            // PERGUNTA 11: Como lido com períodos emocionalmente difíceis:
+            "Desorganizo tudo. Depois tento arrumar.": "Desordem",
+            "Reavalio com calma, sabendo que emoção e realidade não se misturam.": "Prosperidade",
+            "Choro muito. Todas as minhas falhas vêm à tona ao mesmo tempo.": "Validação",
+            "Fico firme e busco resolver rápido.": "Autossuficiência",
+            "Me retraio, o que eu fizer a mais poderá dar errado.": "Medo",
+
+            // PERGUNTA 12: Como costumo reagir quando uma meta não é alcançada no prazo:
+            "Avalio onde errei e ajusto com calma.": "Prosperidade",
+            "Me incomoda, mas faço quando der.": "Desordem",
+            "Fico com a sensação que fracassei.": "Validação",
+            "Fico com vontade de sumir para não lidar com as consequências.": "Medo",
+            "Eu corro para compensar.": "Autossuficiência",
+
+            // PERGUNTA 13: O que mais me trava quando penso em alinhar minha vida ao meu propósito é:
+            "A correria e obrigações do dia a dia, que sempre tomam todo meu tempo.": "Desordem",
+            "Parece que ninguém me enxerga e esse propósito nunca vai acontecer.": "Validação",
+            "Ter que aprender a esperar tempo que leva para ter mais respostas.": "Prosperidade",
+            "O medo de que seja tarde demais — ou que não tenha propósito nenhum na minha vida.": "Medo",
+            "Não posso abrir mão do que já construí.": "Autossuficiência",
+
+            // PERGUNTA 14: Se alguém me pedisse hoje para descrever meu propósito em poucas palavras, eu diria:
+            "Servir é o meu propósito.": "Autossuficiência",
+            "Uma jornada mágica, que conecta quem eu sou com o que posso oferecer ao mundo.": "Prosperidade",
+            "Depende do dia. Ora tenho dúvida, ora convicção.": "Desordem",
+            "Quero me sentir útil e realizada cumprindo meu propósito.": "Validação",
+            "Não sei ao certo… e isso me constrange mais do que eu gostaria de admitir.": "Medo",
+
+            // PERGUNTA 15: Se eu partisse hoje, o que acredito que deixaria para os outros:
+            "Uma pessoa que venceu muitas lutas e adversidades.": "Autossuficiência",
+            "Exemplo de fé, transformação e sementes plantadas.": "Prosperidade",
+            "Nada claro. Vivo dia após dia fazendo meu melhor.": "Desordem",
+            "Deixaria pouco, mas com orgulho de que conquistei com luta e honestidade.": "Medo",
+            "A imagem de alguém que quis acertar embora nem sempre conseguisse.": "Validação"
+        };
+    
     // ============================================
     // FUNÇÃO PARA DATA/HORA BRASILEIRA (AMBAS FASES)
     // ============================================
