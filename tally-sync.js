@@ -16,29 +16,16 @@ class TallySync {
         console.log(`🌐 Supabase: ${process.env.SUPABASE_URL}`);
     }
 
-    // ============================================
-    // FUNÇÃO PARA DATA/HORA BRASILEIRA (AMBAS FASES)
-    // ============================================
-    getBrazilianDateTime() {
-        const now = new Date();
-        // Converter para GMT-3 (Brasil)
-        const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
-        
-        const day = String(brazilTime.getUTCDate()).padStart(2, '0');
-        const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
-        const year = brazilTime.getUTCFullYear();
-        const hours = String(brazilTime.getUTCHours()).padStart(2, '0');
-        const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(brazilTime.getUTCSeconds()).padStart(2, '0');
-        
-        return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
-    }
+
 
     // ============================================
-    // FUNÇÃO PARA CONVERTER DATA DO MP PARA BRASILEIRO
+    // FUNÇÃO UNIVERSAL PARA CONVERTER QUALQUER DATA PARA BRASILEIRO
     // ============================================
-    convertMPDateToBrazilian(mpDate) {
-        const date = new Date(mpDate);
+    convertDateToBrazilian(inputDate = null) {
+        // Se não receber data, usa data atual
+        const date = inputDate ? new Date(inputDate) : new Date();
+        
+        // Converter para GMT-3 (Brasil)
         const brazilTime = new Date(date.getTime() - (3 * 60 * 60 * 1000));
         
         const day = String(brazilTime.getUTCDate()).padStart(2, '0');
@@ -83,7 +70,7 @@ class TallySync {
                 uid: data.uid,
                 nome: data.respostas[0]?.trim(),
                 email: data.respostas[1]?.trim(),
-                data_registro: data.respostas[2]?.trim(), // ✅ Data do Tally (posição 2)
+                data_registro: this.convertDateToBrazilian(data.respostas[2]), // ✅ Data do Tally convertida
                 iniciar_teste: true,
                 concluir_teste: true,
                 status_pgto_teste: 'AGUARDANDO',
@@ -127,8 +114,8 @@ class TallySync {
                 status_pgto_teste: 'PAGO',
                 valor_pgto_teste: '18,81',
                 data_pgto_teste: paymentData.date_approved ? 
-                    this.convertMPDateToBrazilian(paymentData.date_approved) : 
-                    this.getBrazilianDateTime(),
+                    this.convertDateToBrazilian(paymentData.date_approved) : 
+                    this.convertDateToBrazilian(),
                 resultado_teste: resultadoTeste,
                 link_resultado: `https://www.suellenseragi.com.br/resultado1?uid=${uid}`
             };
