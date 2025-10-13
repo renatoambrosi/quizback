@@ -57,7 +57,7 @@ class TallySync {
                 const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
                 const seconds = String(brazilTime.getUTCSeconds()).padStart(2, '0');
                 
-                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
             };
 
             // Mapear campos conforme nova estrutura da tabela
