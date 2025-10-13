@@ -6,7 +6,7 @@ const SimpleEmailSender = require('../email-sender');
 const emailSender = new SimpleEmailSender();
 const PushoverNotifier = require('../pushover-notifier');
 const pushoverNotifier = new PushoverNotifier();
-const TallySync = require('../tally-sync');
+const TallySync = require('../backend-atual/tally-sync');  // ← CORRIGIDO
 const tallySync = new TallySync();
 
 // ============================================
