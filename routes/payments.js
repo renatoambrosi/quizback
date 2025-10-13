@@ -10,56 +10,7 @@ const TallySync = require('../tally-sync');
 const tallySync = new TallySync();
 
 // ============================================
-// WEBHOOK DO TALLY - NOVA FASE 1 AUTOMÁTICA
-// ============================================
-router.post('/webhook/tally', async (req, res) => {
-    try {
-        console.log('📝 WEBHOOK TALLY RECEBIDO:', JSON.stringify(req.body, null, 2));
-        
-        // Validar assinatura de segurança do Tally
-        const signature = req.headers['x-tally-signature'];
-        if (process.env.TALLY_WEBHOOK_SECRET && signature) {
-            const crypto = require('crypto');
-            const payload = JSON.stringify(req.body);
-            const expectedSignature = 'sha256=' + crypto
-                .createHmac('sha256', process.env.TALLY_WEBHOOK_SECRET)
-                .update(payload)
-                .digest('hex');
-            
-            if (signature !== expectedSignature) {
-                console.error('❌ Assinatura inválida do Tally');
-                return res.status(401).json({ error: 'Assinatura inválida' });
-            }
-        }
-        
-        // Responder imediatamente para o Tally
-        res.status(200).json({ 
-            received: true, 
-            timestamp: new Date().toISOString() 
-        });
-        
-        // Processar dados do formulário usando o TallySync
-        const { data } = req.body;
-        if (!data || !data.fields) {
-            console.error('❌ Estrutura de dados inválida do Tally');
-            return;
-        }
-        
-        // Usar a função do TallySync para processar os dados
-        const resultado = await tallySync.processarWebhookTally(data);
-        
-        console.log('✅ Webhook Tally processado com sucesso:');
-        console.log('📧 Email:', resultado.email);
-        console.log('⚡ Energia:', resultado.energia_calculada);
-        console.log('🆔 UID:', resultado.uid);
-        
-    } catch (error) {
-        console.error('❌ Erro no webhook Tally:', error);
-    }
-});
-
-// ============================================
-// FASE 1: SYNC APÓS SUBMISSÃO TALLY (MÉTODO ANTIGO)
+// FASE 1: SYNC APÓS SUBMISSÃO TALLY
 // ============================================
 router.post('/sync-phase1', async (req, res) => {
     try {
