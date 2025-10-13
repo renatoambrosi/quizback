@@ -43,12 +43,28 @@ class TallySync {
             const data = await response.json();
             console.log(`📊 DADOS COMPLETOS:`, JSON.stringify(data, null, 2));
 
+            // Função para obter data/hora no fuso brasileiro (GMT-3)
+            const getBrazilianDateTime = () => {
+                const now = new Date();
+                // Converter para GMT-3 (Brasil)
+                const brazilTime = new Date(now.getTime() - (3 * 60 * 60 * 1000));
+                
+                // Formatar como dd-MM-yyyy HH:mm
+                const day = String(brazilTime.getUTCDate()).padStart(2, '0');
+                const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
+                const year = brazilTime.getUTCFullYear();
+                const hours = String(brazilTime.getUTCHours()).padStart(2, '0');
+                const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
+                
+                return `${day}-${month}-${year} ${hours}:${minutes}`;
+            };
+
             // Mapear campos conforme nova estrutura da tabela
             const userData = {
                 uid: data.uid,
                 nome: data.respostas[0]?.trim(),
                 email: data.respostas[1]?.trim(),
-                data_registro: data.respostas[2],
+                data_registro: getBrazilianDateTime(),
                 iniciar_teste: true,
                 concluir_teste: true,
                 status_pgto_teste: 'AGUARDANDO',
