@@ -262,6 +262,177 @@ class TallySync {
             throw error;
         }
     }
+    // ============================================
+    // NOVA FUNÇÃO: CALCULAR ENERGIA DAS RESPOSTAS
+    // ============================================
+    calcularEnergia(respostas) {
+        console.log('🧮 Iniciando cálculo da energia predominante');
+        console.log('📋 Respostas recebidas:', respostas.length, 'respostas');
+
+        // Contador de cada tipo de energia
+        const contagem = {
+            "Medo": 0,
+            "Desordem": 0,
+            "Validação": 0,
+            "Autossuficiência": 0,
+            "Prosperidade": 0
+        };
+
+        // Contagem das respostas
+        let respostasEncontradas = 0;
+        respostas.forEach((resposta, index) => {
+            const tipo = this.mapaRespostas[resposta];
+            if (tipo) {
+                contagem[tipo]++;
+                respostasEncontradas++;
+                console.log(`✅ Pergunta ${index + 1}: "${resposta}" → ${tipo}`);
+            } else {
+                console.warn(`⚠️ Pergunta ${index + 1}: Resposta não encontrada no mapa: "${resposta}"`);
+            }
+        });
+
+        console.log(`📊 Total de respostas mapeadas: ${respostasEncontradas}/15`);
+        console.log('🔢 Contadores finais:', contagem);
+
+        if (respostasEncontradas === 0) {
+            console.error('❌ Nenhuma resposta foi mapeada!');
+            return "Erro no cálculo da energia";
+        }
+
+        // Calcular percentuais
+        const total = Object.values(contagem).reduce((acc, val) => acc + val, 0);
+        const percentuais = {};
+        for (let tipo in contagem) {
+            percentuais[tipo] = total > 0 ? Math.round((contagem[tipo] / total) * 100) : 0;
+        }
+
+        console.log('📈 Percentuais calculados:', percentuais);
+
+        // Encontrar tipo predominante
+        let max = 0;
+        let elementoPredominante = "";
+        for (let tipo in contagem) {
+            if (contagem[tipo] > max) {
+                max = contagem[tipo];
+                elementoPredominante = tipo;
+            }
+        }
+
+        // Determinar diagnóstico final
+        let diagnostico = "";
+        switch (elementoPredominante) {
+            case "Medo":
+                diagnostico = "Energia do Medo";
+                break;
+            case "Autossuficiência":
+                diagnostico = "Energia da Autossuficiência";
+                break;
+            case "Validação":
+                diagnostico = "Energia da Validação";
+                break;
+            case "Desordem":
+                diagnostico = "Energia da Desordem";
+                break;
+            case "Prosperidade":
+                // LÓGICA DOS NÍVEIS baseada no percentual
+                const percentualProsp = percentuais["Prosperidade"];
+                if (percentualProsp <= 50) {
+                    diagnostico = "Energia da Prosperidade Nv.1";
+                } else if (percentualProsp <= 80) {
+                    diagnostico = "Energia da Prosperidade Nv.2";
+                } else {
+                    diagnostico = "Energia da Prosperidade Nv.3";
+                }
+                break;
+            default:
+                diagnostico = "Não foi possível calcular sua energia predominante.";
+        }
+
+        console.log(`🎯 Energia predominante calculada: ${diagnostico}`);
+        console.log(`📊 ${elementoPredominante}: ${max}/${total} (${percentuais[elementoPredominante]}%)`);
+        
+        return diagnostico;
+    }
+
+    // ============================================
+    // NOVA FUNÇÃO: PROCESSAR WEBHOOK DO TALLY
+    // ============================================
+    async processarWebhookTally(tallyData) {
+        try {
+            console.log('📝 Processando dados do webhook Tally');
+            
+            // Extrair dados dos campos do Tally
+            let nome = '';
+            let email = '';
+            const respostas = [];
+            
+            // Percorrer os campos do Tally
+            if (tallyData.fields) {
+                tallyData.fields.forEach(field => {
+                    if (field.type === 'INPUT_TEXT' && !email && field.value) {
+                        // Primeiro campo de texto é o nome
+                        nome = field.value.trim();
+                    } else if (field.type === 'EMAIL' && field.value) {
+                        // Campo de email
+                        email = field.value.trim();
+                    } else if (field.type === 'MULTIPLE_CHOICE' && field.value) {
+                        // Respostas de múltipla escolha (as 15 perguntas)
+                        respostas.push(field.value.trim());
+                    }
+                });
+            }
+            
+            if (!email) {
+                throw new Error('Email não encontrado nos dados do Tally');
+            }
+            
+            if (respostas.length !== 15) {
+                console.warn(`⚠️ Esperadas 15 respostas, recebidas ${respostas.length}`);
+            }
+            
+            console.log(`👤 Nome: ${nome}`);
+            console.log(`📧 Email: ${email}`);
+            console.log(`📋 Respostas: ${respostas.length}`);
+            
+            // Calcular energia predominante
+            const energiaCalculada = this.calcularEnergia(respostas);
+            
+            // Preparar dados para salvar no Supabase
+            const userData = {
+                uid: tallyData.responseId || require('crypto').randomUUID(),
+                nome: nome || 'Nome não informado',
+                email: email,
+                respostas: JSON.stringify(respostas),
+                energia_calculada: energiaCalculada,
+                data_registro: this.getBrazilianDateTime(),
+                iniciar_teste: true,
+                concluir_teste: true,
+                status_pgto_teste: 'PENDENTE',
+                aceita_emails: true
+            };
+            
+            console.log('💾 Salvando no Supabase:', userData);
+            
+            // Usar UPSERT para evitar duplicatas
+            const { data: insertedData, error } = await this.supabase
+                .from(this.tableName)
+                .upsert(userData, { onConflict: 'email' }) // Usar email como chave única
+                .select();
+                
+            if (error) {
+                console.error('❌ Erro ao salvar no Supabase:', error);
+                throw error;
+            }
+            
+            console.log('✅ Dados salvos com sucesso no Supabase');
+            return insertedData[0];
+            
+        } catch (error) {
+            console.error('❌ Erro ao processar webhook Tally:', error);
+            throw error;
+        }
+    }
+
 
     // ============================================
     // SCRAPING DA PÁGINA DE RESULTADO
