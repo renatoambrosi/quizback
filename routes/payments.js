@@ -10,6 +10,19 @@ const TallySync = require('../tally-sync');
 const tallySync = new TallySync();
 
 // ============================================
+// WEBHOOK TALLY - NOVA FASE 1 AUTOMÁTICA
+// ============================================
+router.post('/webhook/tally', async (req, res) => {
+    try {
+        console.log('📝 WEBHOOK TALLY:', req.body);
+        res.status(200).json({ received: true });
+    } catch (error) {
+        console.error('❌ Erro webhook Tally:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
 // FASE 1: SYNC APÓS SUBMISSÃO TALLY
 // ============================================
 router.post('/sync-phase1', async (req, res) => {
