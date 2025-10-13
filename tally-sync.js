@@ -22,32 +22,20 @@ class TallySync {
     // FUNÇÃO PARA CONVERTER QUALQUER DATA PARA FORMATO BRASILEIRO
     // ============================================
     convertDateToBrazilian(inputDate = null) {
-        // Se não receber data, usa data atual
         const date = inputDate ? new Date(inputDate) : new Date();
         
-        // Obter componentes da data em GMT-3 (Brasil)
-        const options = {
-            timeZone: 'America/Sao_Paulo',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        };
+        // Ajustar para GMT-3 (horário de Brasília)
+        const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
+        const brazilTime = new Date(utcTime + (-3 * 3600000));
         
-        const formatter = new Intl.DateTimeFormatter('pt-BR', options);
-        const parts = formatter.formatToParts(date);
+        const day = String(brazilTime.getDate()).padStart(2, '0');
+        const month = String(brazilTime.getMonth() + 1).padStart(2, '0');
+        const year = brazilTime.getFullYear();
+        const hours = String(brazilTime.getHours()).padStart(2, '0');
+        const minutes = String(brazilTime.getMinutes()).padStart(2, '0');
+        const seconds = String(brazilTime.getSeconds()).padStart(2, '0');
         
-        const day = parts.find(part => part.type === 'day').value;
-        const month = parts.find(part => part.type === 'month').value;
-        const year = parts.find(part => part.type === 'year').value;
-        const hour = parts.find(part => part.type === 'hour').value;
-        const minute = parts.find(part => part.type === 'minute').value;
-        const second = parts.find(part => part.type === 'second').value;
-        
-        return `${day}-${month}-${year} ${hour}:${minute}:${second}`;
+        return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
     }
 
     // ============================================
