@@ -19,23 +19,35 @@ class TallySync {
 
 
     // ============================================
-    // FUNÇÃO UNIVERSAL PARA CONVERTER QUALQUER DATA PARA BRASILEIRO
+    // FUNÇÃO PARA CONVERTER QUALQUER DATA PARA FORMATO BRASILEIRO
     // ============================================
     convertDateToBrazilian(inputDate = null) {
         // Se não receber data, usa data atual
         const date = inputDate ? new Date(inputDate) : new Date();
         
-        // Converter para GMT-3 (Brasil)
-        const brazilTime = new Date(date.getTime() - (3 * 60 * 60 * 1000));
+        // Obter componentes da data em GMT-3 (Brasil)
+        const options = {
+            timeZone: 'America/Sao_Paulo',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        };
         
-        const day = String(brazilTime.getUTCDate()).padStart(2, '0');
-        const month = String(brazilTime.getUTCMonth() + 1).padStart(2, '0');
-        const year = brazilTime.getUTCFullYear();
-        const hours = String(brazilTime.getUTCHours()).padStart(2, '0');
-        const minutes = String(brazilTime.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(brazilTime.getUTCSeconds()).padStart(2, '0');
+        const formatter = new Intl.DateTimeFormatter('pt-BR', options);
+        const parts = formatter.formatToParts(date);
         
-        return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+        const day = parts.find(part => part.type === 'day').value;
+        const month = parts.find(part => part.type === 'month').value;
+        const year = parts.find(part => part.type === 'year').value;
+        const hour = parts.find(part => part.type === 'hour').value;
+        const minute = parts.find(part => part.type === 'minute').value;
+        const second = parts.find(part => part.type === 'second').value;
+        
+        return `${day}-${month}-${year} ${hour}:${minute}:${second}`;
     }
 
     // ============================================
