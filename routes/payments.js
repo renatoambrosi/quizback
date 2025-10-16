@@ -209,7 +209,7 @@ router.post('/process_payment', async (req, res) => {
             };
 
             if (result.status === 'approved') {
-                response.redirect_url = `https://www.suellenseragi.com.br/resultado2?uid=${paymentUID}`;
+                response.redirect_url = `https://www.suellenseragi.com.br/resultado1?uid=${paymentUID}`;
                 logPayment('CARTÃO_APROVADO', result.id, 'SUCCESS', { uid: paymentUID });
             }
 
@@ -495,7 +495,7 @@ router.get('/callback', (req, res) => {
     
     // Redirecionar para resultado com UID se disponível
     if (req.query.external_reference) {
-        res.redirect(`https://www.suellenseragi.com.br/resultado2?uid=${req.query.external_reference}`);
+        res.redirect(`https://www.suellenseragi.com.br/resultado1?uid=${req.query.external_reference}`);
     } else {
         res.redirect('https://quizfront.vercel.app');
     }
