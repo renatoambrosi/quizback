@@ -6,6 +6,8 @@ const SimpleEmailSender = require('../email-sender');
 const emailSender = new SimpleEmailSender();
 const PushoverNotifier = require('../pushover-notifier');
 const pushoverNotifier = new PushoverNotifier();
+const WhatsAppNotifier = require('../whatsapp');
+const whatsappNotifier = new WhatsAppNotifier();
 
 
 // ============================================
@@ -368,6 +370,13 @@ router.post('/webhook', async (req, res) => {
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
                 const customerEmail = paymentDetails.metadata?.customer_email;
                 await emailSender.sendPixSuccessEmail(customerEmail, paymentDetails.external_reference);
+
+                    // Notificação Whatsapp
+                    try {
+                        await whatsappNotifier.enviarMensagemAprovacao(paymentDetails.external_reference);
+                    } catch (error) {
+                        console.error('❌ Erro WhatsApp PIX:', error);
+                    }
 
                     // Notificação Pushover
                     try {
