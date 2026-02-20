@@ -19,16 +19,21 @@ class WhatsAppNotifier {
 
     async enviarMensagemAprovacao(uid) {
         try {
+            console.log(`📱 WhatsApp iniciando para UID: ${uid}`);
+
             const cliente = await this.buscarCliente(uid);
+            console.log(`📱 Cliente encontrado:`, cliente);
+
             if (!cliente) return;
 
             const numero = cliente.telefone.replace(/\D/g, '');
             const numeroFinal = numero.startsWith('55') ? numero : `55${numero}`;
+            const instanceEncoded = encodeURIComponent(this.instance);
 
             const mensagem = `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n🔎O resultado do seu Teste de Prosperidade já está disponível!\n\nEstá animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado1?uid=${uid}\n\nDepois me conta o que achou!`;
 
             await axios.post(
-                `${this.evolutionUrl}/message/sendText/${this.instance}`,
+                `${this.evolutionUrl}/message/sendText/${instanceEncoded}`,
                 { number: numeroFinal, text: mensagem },
                 { headers: { 'apikey': this.apiKey, 'Content-Type': 'application/json' } }
             );
