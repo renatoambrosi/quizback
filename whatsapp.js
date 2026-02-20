@@ -27,7 +27,12 @@ class WhatsAppNotifier {
             if (!cliente) return;
 
             const numero = String(cliente.telefone).replace(/\D/g, '');
-            const numeroFinal = numero.startsWith('55') ? numero : `55${numero}`;
+            const numeroFinal = numero.startsWith('55')
+                ? numero
+                : numero.startsWith('0')
+                    ? `55${numero.slice(1)}`
+                    : `55${numero}`;
+
             const instanceEncoded = encodeURIComponent(this.instance);
 
             const mensagem = `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n🔎O resultado do seu Teste de Prosperidade já está disponível!\n\nEstá animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado1?uid=${uid}\n\nDepois me conta o que achou!`;
