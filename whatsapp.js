@@ -47,4 +47,3 @@ class WhatsAppNotifier {
 }
 
 module.exports = WhatsAppNotifier;
-```
