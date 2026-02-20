@@ -26,7 +26,7 @@ class WhatsAppNotifier {
 
             if (!cliente) return;
 
-            const numero = cliente.telefone.replace(/\D/g, '');
+            const numero = String(cliente.telefone).replace(/\D/g, '');
             const numeroFinal = numero.startsWith('55') ? numero : `55${numero}`;
             const instanceEncoded = encodeURIComponent(this.instance);
 
@@ -47,3 +47,4 @@ class WhatsAppNotifier {
 }
 
 module.exports = WhatsAppNotifier;
+```
