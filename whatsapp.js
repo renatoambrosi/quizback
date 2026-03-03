@@ -12,8 +12,8 @@ class WhatsAppNotifier {
         const response = await axios.get(`${this.sheetUrl}?uid=${uid}`);
         if (!response.data.found) return null;
         return {
-            nome: response.data.respostas[3],
-            telefone: response.data.respostas[4]
+            nome: response.data.respostas[0],
+            telefone: response.data.respostas[1]
         };
     }
 
