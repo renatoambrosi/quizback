@@ -32,7 +32,7 @@ class WhatsAppNotifier {
                     : `55${numero}`;
             console.log(`📱 Número final:`, numeroFinal);
             const instanceEncoded = encodeURIComponent(this.instance);
-            const mensagem = `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n🔎O resultado do seu Teste de Prosperidade já está disponível!\n\nEstá animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado4?uid=${uid}\n\nDepois me conta o que achou!`;
+            const mensagem = `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n🔎O resultado do seu Teste de Prosperidade já está disponível!\n\nEstá animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado4?uid=${uid}`;
             await axios.post(
                 `${this.evolutionUrl}/message/sendText/${instanceEncoded}`,
                 { number: numeroFinal, text: mensagem },
