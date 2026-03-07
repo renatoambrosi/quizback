@@ -19,7 +19,18 @@ async function initDb() {
                 criado_em TIMESTAMP DEFAULT NOW()
             )
         `);
-        console.log('✅ Banco de dados whatsapp_agendados iniciado');
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS sessoes_agendadas (
+                id SERIAL PRIMARY KEY,
+                nome VARCHAR(255) NOT NULL,
+                telefone VARCHAR(20) NOT NULL,
+                data_sessao DATE NOT NULL,
+                confirmado_em TIMESTAMP DEFAULT NOW()
+            )
+        `);
+
+        console.log('✅ Banco de dados iniciado (whatsapp_agendados + sessoes_agendadas)');
     } catch (error) {
         console.error('❌ Erro ao iniciar banco:', error.message);
     }
@@ -61,4 +72,17 @@ async function marcarEnviado(id) {
     }
 }
 
-module.exports = { initDb, agendarEnvio, buscarPendentes, marcarEnviado };
+async function salvarSessaoAgendada(nome, telefone, dataSessao) {
+    try {
+        await pool.query(
+            `INSERT INTO sessoes_agendadas (nome, telefone, data_sessao) VALUES ($1, $2, $3)`,
+            [nome, telefone, dataSessao]
+        );
+        console.log(`✅ Sessão agendada salva para ${nome} (${telefone})`);
+    } catch (error) {
+        console.error('❌ Erro ao salvar sessão agendada:', error.message);
+        throw error;
+    }
+}
+
+module.exports = { initDb, agendarEnvio, buscarPendentes, marcarEnviado, salvarSessaoAgendada };
