@@ -70,7 +70,7 @@ router.post('/agendar-sessao', async (req, res) => {
                 token: 'axfum4x76e38hzuuxjrkb3sh2febbw',
                 user: process.env.PUSHOVER_USER_KEY,
                 title: '🗓️ Nova Sessão Confirmada!',
-                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 Sábado ${dataFormatada} às 14h\n📱 ${telefone}`
+                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 Sábado ${dataFormatada} às 14h\n📱 ${telefone}`,
                 sound: 'Agendamento', // <-- Use o nome exatamente como aparece no seu painel
                 priority: 1
             });
