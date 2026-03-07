@@ -56,7 +56,7 @@ class PushoverNotifier {
                 title: 'Venda Aprovada!',
                 message,
                 priority: 1,
-                sound: 'cash'
+                sound: 'vendateste'
             };
 
             const params = new URLSearchParams();
