@@ -4,6 +4,8 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const paymentRoutes = require('./routes/payments');
+const { initDb } = require('./db');
+const { iniciarScheduler } = require('./scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,7 +24,7 @@ app.use(helmet({
       connectSrc: ["'self'", "https://api.mercadopago.com", "https://sdk.mercadopago.com"],
     },
   },
-  crossOriginEmbedderPolicy: false, // Necessário para Mercado Pago
+  crossOriginEmbedderPolicy: false,
 }));
 
 app.use(cors({
@@ -38,12 +40,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Signature', 'X-Request-Id']
 }));
 
-// Middleware para logging de requests
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`📡 ${timestamp} - ${req.method} ${req.path} - IP: ${req.ip}`);
   
-  // Log específico para webhooks
   if (req.path === '/api/webhook') {
     console.log('🔔 WEBHOOK REQUEST:', {
       headers: req.headers,
@@ -57,7 +57,6 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware para capturar IP real
 app.use((req, res, next) => {
   req.clientIP = req.headers['x-forwarded-for'] || 
                  req.connection.remoteAddress || 
@@ -70,7 +69,6 @@ app.use((req, res, next) => {
 // ROTAS CONFORME DOCUMENTAÇÃO OFICIAL
 // ============================================
 
-// Health Check
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
@@ -80,7 +78,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Status detalhado do sistema
 app.get('/status', (req, res) => {
   const uptime = process.uptime();
   const memoryUsage = process.memoryUsage();
@@ -106,7 +103,6 @@ app.get('/status', (req, res) => {
   });
 });
 
-// Endpoint para validar conectividade com Mercado Pago
 app.get('/api/mp-health', async (req, res) => {
   try {
     const { MercadoPagoConfig } = require('mercadopago');
@@ -135,10 +131,8 @@ app.get('/api/mp-health', async (req, res) => {
   }
 });
 
-// Rotas de pagamento
 app.use('/api', paymentRoutes);
 
-// Rota para informações do ambiente
 app.get('/api/environment', (req, res) => {
   res.status(200).json({
     node_env: process.env.NODE_ENV || 'development',
@@ -153,7 +147,6 @@ app.get('/api/environment', (req, res) => {
   });
 });
 
-// Rota de fallback
 app.get('*', (req, res) => {
   console.log(`❓ Rota não encontrada: ${req.method} ${req.path}`);
   res.status(404).json({ 
@@ -199,7 +192,6 @@ app.use((error, req, res, next) => {
 // TRATAMENTO DE PROCESSOS
 // ============================================
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM recebido. Encerrando servidor...');
   process.exit(0);
@@ -210,7 +202,6 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Log de erros não capturados
 process.on('uncaughtException', (error) => {
   console.error('💥 UNCAUGHT EXCEPTION:', error);
   process.exit(1);
@@ -225,7 +216,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   const timestamp = new Date().toISOString();
   console.log(`
   🚀 ============================================
@@ -261,7 +252,6 @@ app.listen(PORT, () => {
   ============================================
   `);
   
-  // Verificar configurações críticas
   const criticalConfigs = [
     'MERCADOPAGO_ACCESS_TOKEN',
     'MERCADOPAGO_PUBLIC_KEY',
@@ -283,4 +273,12 @@ app.listen(PORT, () => {
   🚀 Sistema pronto para produção com implementação oficial MP.
     `);
   }
+
+  // Inicializar banco de dados e scheduler
+  await initDb();
+  iniciarScheduler(
+    process.env.EVOLUTION_URL,
+    process.env.EVOLUTION_API_KEY,
+    process.env.EVOLUTION_INSTANCE
+  );
 });
