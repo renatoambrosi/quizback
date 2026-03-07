@@ -6,13 +6,20 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
     console.log('⏰ Scheduler de WhatsApp iniciado');
 
     cron.schedule('0 * * * *', async () => {
+        const hora = new Date().getHours();
+
+        if (hora < 8 || hora >= 22) {
+            console.log(`⏰ Fora do horário de envio (${hora}h). Pulando...`);
+            return;
+        }
+
         console.log('⏰ Verificando envios agendados...');
         const pendentes = await buscarPendentes();
 
         for (const registro of pendentes) {
             try {
                 const instanceEncoded = encodeURIComponent(instance);
-                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para agendar:\nhttps://www.suellenseragi.com.br/call-diagnostico`;
+                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita comigo, onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para agendar:\nhttps://www.suellenseragi.com.br/call-diagnostico`;
 
                 await axios.post(
                     `${evolutionUrl}/message/sendText/${instanceEncoded}`,
