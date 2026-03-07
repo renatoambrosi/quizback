@@ -71,6 +71,8 @@ router.post('/agendar-sessao', async (req, res) => {
                 user: process.env.PUSHOVER_USER_KEY,
                 title: '🗓️ Nova Sessão Confirmada!',
                 message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 Sábado ${dataFormatada} às 14h\n📱 ${telefone}`
+                sound: 'Agendamento', // <-- Use o nome exatamente como aparece no seu painel
+                priority: 1
             });
             console.log(`🔔 Pushover enviado para agendamento de ${nome}`);
         } catch (err) {
