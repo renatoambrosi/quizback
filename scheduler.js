@@ -1,0 +1,32 @@
+const cron = require('node-cron');
+const axios = require('axios');
+const { buscarPendentes, marcarEnviado } = require('./db');
+
+function iniciarScheduler(evolutionUrl, apiKey, instance) {
+    console.log('⏰ Scheduler de WhatsApp iniciado');
+
+    cron.schedule('0 * * * *', async () => {
+        console.log('⏰ Verificando envios agendados...');
+        const pendentes = await buscarPendentes();
+
+        for (const registro of pendentes) {
+            try {
+                const instanceEncoded = encodeURIComponent(instance);
+                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Call de Diagnóstico gratuita onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para agendar:\nhttps://www.suellenseragi.com.br/call-diagnostico`;
+
+                await axios.post(
+                    `${evolutionUrl}/message/sendText/${instanceEncoded}`,
+                    { number: registro.telefone, text: mensagem },
+                    { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
+                );
+
+                await marcarEnviado(registro.id);
+                console.log(`✅ Segundo WhatsApp enviado para ${registro.nome} (${registro.telefone})`);
+            } catch (error) {
+                console.error(`❌ Erro ao enviar para ${registro.nome}:`, error.message);
+            }
+        }
+    });
+}
+
+module.exports = { iniciarScheduler };
