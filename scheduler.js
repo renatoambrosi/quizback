@@ -12,7 +12,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
         for (const registro of pendentes) {
             try {
                 const instanceEncoded = encodeURIComponent(instance);
-                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Call de Diagnóstico gratuita onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para agendar:\nhttps://www.suellenseragi.com.br/call-diagnostico`;
+                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para agendar:\nhttps://www.suellenseragi.com.br/call-diagnostico`;
 
                 await axios.post(
                     `${evolutionUrl}/message/sendText/${instanceEncoded}`,
