@@ -4,6 +4,7 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const paymentRoutes = require('./routes/payments');
+const sessoesRoutes = require('./routes/sessoes');
 const { initDb } = require('./db');
 const { iniciarScheduler } = require('./scheduler');
 
