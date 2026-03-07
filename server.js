@@ -32,6 +32,7 @@ app.use(cors({
   origin: [
     'https://quizfront.vercel.app',
     'https://www.suellenseragi.com.br',
+    'https://agendamento.suellenseragi.com.br',
     'http://localhost:3000',
     'http://localhost:5173',
     'https://api.mercadopago.com'
