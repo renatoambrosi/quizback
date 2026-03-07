@@ -22,7 +22,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
 
                 const nomeEncoded = encodeURIComponent(registro.nome);
                 const refEncoded = encodeURIComponent(registro.telefone);
-                const link = `https://www.suellenseragi.com.br/call-diagnostico?name=${nomeEncoded}&ref=${refEncoded}`;
+                const link = `https://agendamento.suellenseragi.com.br?name=${nomeEncoded}&ref=${refEncoded}`;
 
                 const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita comigo, onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para confirmar sua vaga:\n${link}`;
 
