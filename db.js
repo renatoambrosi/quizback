@@ -13,6 +13,7 @@ async function initDb() {
                 uid VARCHAR(50) NOT NULL,
                 nome VARCHAR(255),
                 telefone VARCHAR(20),
+                email VARCHAR(255),
                 enviar_em TIMESTAMP NOT NULL,
                 enviado BOOLEAN DEFAULT FALSE,
                 criado_em TIMESTAMP DEFAULT NOW()
@@ -24,12 +25,12 @@ async function initDb() {
     }
 }
 
-async function agendarEnvio(uid, nome, telefone) {
+async function agendarEnvio(uid, nome, telefone, email) {
     try {
         const enviarEm = new Date(Date.now() + 24 * 60 * 60 * 1000);
         await pool.query(
-            `INSERT INTO whatsapp_agendados (uid, nome, telefone, enviar_em) VALUES ($1, $2, $3, $4)`,
-            [uid, nome, telefone, enviarEm]
+            `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em) VALUES ($1, $2, $3, $4, $5)`,
+            [uid, nome, telefone, email, enviarEm]
         );
         console.log(`📅 WhatsApp agendado para ${nome} em ${enviarEm}`);
     } catch (error) {
