@@ -8,7 +8,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
     cron.schedule('0 * * * *', async () => {
         const hora = new Date().getHours();
 
-        if (hora < 8 || hora >= 22) {
+        if (hora < 8 || hora >= 20) {
             console.log(`⏰ Fora do horário de envio (${hora}h). Pulando...`);
             return;
         }
@@ -19,7 +19,12 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
         for (const registro of pendentes) {
             try {
                 const instanceEncoded = encodeURIComponent(instance);
-                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita comigo, onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para agendar:\nhttps://www.suellenseragi.com.br/call-diagnostico`;
+
+                const nomeEncoded = encodeURIComponent(registro.nome);
+                const refEncoded = encodeURIComponent(registro.telefone);
+                const link = `https://www.suellenseragi.com.br/call-diagnostico?name=${nomeEncoded}&ref=${refEncoded}`;
+
+                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita comigo, onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para confirmar sua vaga:\n${link}`;
 
                 await axios.post(
                     `${evolutionUrl}/message/sendText/${instanceEncoded}`,
