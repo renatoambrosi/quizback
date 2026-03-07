@@ -8,7 +8,7 @@ const PushoverNotifier = require('../pushover-notifier');
 const pushoverNotifier = new PushoverNotifier();
 const WhatsAppNotifier = require('../whatsapp');
 const whatsappNotifier = new WhatsAppNotifier();
-
+const { agendarEnvio } = require('../db');
 
 // ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
@@ -30,12 +30,10 @@ const merchantOrder = new MerchantOrder(client);
 // FUNÇÕES UTILITÁRIAS CONFORME DOC OFICIAL
 // ============================================
 
-// Função para criar additional_info conforme documentação oficial MP
 function createAdditionalInfo(paymentData, userUID) {
     const now = new Date().toISOString();
     
     return {
-        // ITEMS - Estrutura conforme doc oficial MP
         items: [
             {
                 id: "teste-prosperidade-001",
@@ -47,8 +45,6 @@ function createAdditionalInfo(paymentData, userUID) {
                 picture_url: "https://www.suellenseragi.com.br/logo.png"
             }
         ],
-        
-        // PAYER - Estrutura conforme doc oficial MP
         payer: {
             first_name: paymentData.additional_info?.payer?.first_name || "Cliente",
             last_name: paymentData.additional_info?.payer?.last_name || "Teste",
@@ -61,8 +57,6 @@ function createAdditionalInfo(paymentData, userUID) {
             is_first_purchase_online: paymentData.additional_info?.payer?.is_first_purchase_online || "1",
             authentication_type: paymentData.additional_info?.payer?.authentication_type || "Native web"
         },
-        
-        // SHIPMENTS - Estrutura conforme doc oficial MP
         shipments: {
             receiver_address: {
                 zip_code: "01234-567",
@@ -75,7 +69,6 @@ function createAdditionalInfo(paymentData, userUID) {
     };
 }
 
-// Função para logs estruturados
 function logPayment(action, paymentId, status, details = {}) {
     const timestamp = new Date().toISOString();
     console.log(`
@@ -89,7 +82,6 @@ function logPayment(action, paymentId, status, details = {}) {
     `);
 }
 
-// Função para validar dados obrigatórios
 function validatePaymentData(paymentData) {
     const errors = [];
     
@@ -117,7 +109,6 @@ router.post('/process_payment', async (req, res) => {
         console.log('🧱 PROCESSANDO PAGAMENTO - Checkout Bricks Oficial');
         logPayment('RECEBIDO', 'pending', 'INICIANDO', req.body);
 
-        // Validação conforme documentação
         const validationErrors = validatePaymentData(req.body);
         if (validationErrors.length > 0) {
             logPayment('VALIDAÇÃO', 'none', 'ERRO', { errors: validationErrors });
@@ -143,10 +134,6 @@ router.post('/process_payment', async (req, res) => {
         const paymentUID = uid || uuidv4();
         const enhancedAdditionalInfo = createAdditionalInfo(req.body, paymentUID);
 
-        // ============================================
-        // PAGAMENTO CARTÃO - CONFORME DOC OFICIAL MP
-        // ============================================
-
         if (payment_method_id && token) {
             console.log('💳 PROCESSANDO CARTÃO - Estrutura Oficial MP');
 
@@ -157,8 +144,6 @@ router.post('/process_payment', async (req, res) => {
                 installments: Number(installments) || 1,
                 payment_method_id: payment_method_id,
                 issuer_id: Number(issuer_id),
-                
-                // PAYER conforme documentação oficial
                 payer: {
                     email: payer.email,
                     identification: {
@@ -166,13 +151,11 @@ router.post('/process_payment', async (req, res) => {
                         number: payer.identification?.number || '12345678909'
                     }
                 },
-                
                 external_reference: paymentUID,
                 additional_info: enhancedAdditionalInfo,
                 notification_url: `${process.env.BASE_URL}/api/webhook`,
                 statement_descriptor: 'TESTE PROSPERIDADE',
                 binary_mode: false,
-                
                 metadata: {
                     user_uid: paymentUID,
                     integration_type: 'checkout_bricks',
@@ -188,9 +171,7 @@ router.post('/process_payment', async (req, res) => {
 
             const result = await payment.create({
                 body: paymentData,
-                requestOptions: {
-                    idempotencyKey: uuidv4()
-                }
+                requestOptions: { idempotencyKey: uuidv4() }
             });
 
             logPayment('CARTÃO_RESULTADO', result.id, result.status, {
@@ -218,10 +199,6 @@ router.post('/process_payment', async (req, res) => {
             return res.status(201).json(response);
         }
 
-        // ============================================
-        // PAGAMENTO PIX - CONFORME DOC OFICIAL MP
-        // ============================================
-
         if (payment_method_id === 'pix') {
             console.log('🟢 PROCESSANDO PIX - Estrutura Oficial MP');
 
@@ -229,8 +206,6 @@ router.post('/process_payment', async (req, res) => {
                 transaction_amount: Number(transaction_amount),
                 description: description || 'Teste de Prosperidade - Resultado Personalizado',
                 payment_method_id: 'pix',
-                
-                // PAYER conforme documentação oficial
                 payer: {
                     email: payer.email,
                     identification: {
@@ -238,17 +213,13 @@ router.post('/process_payment', async (req, res) => {
                         number: '12345678909'
                     }
                 },
-                
                 external_reference: paymentUID,
                 additional_info: enhancedAdditionalInfo,
                 notification_url: `${process.env.BASE_URL}/api/webhook`,
-                
-                // Data de expiração conforme doc oficial (30 minutos)
                 date_of_expiration: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-                
                 metadata: {
                     user_uid: paymentUID,
-                    customer_email: payer.email,  // ← SALVAR EMAIL DO FORMULÁRIO
+                    customer_email: payer.email,
                     integration_type: 'checkout_bricks_pix',
                     version: '2.0'
                 }
@@ -262,9 +233,7 @@ router.post('/process_payment', async (req, res) => {
 
             const pixResult = await payment.create({
                 body: pixData,
-                requestOptions: {
-                    idempotencyKey: uuidv4()
-                }
+                requestOptions: { idempotencyKey: uuidv4() }
             });
 
             logPayment('PIX_CRIADO', pixResult.id, pixResult.status, {
@@ -284,7 +253,6 @@ router.post('/process_payment', async (req, res) => {
                 date_of_expiration: pixResult.date_of_expiration
             };
 
-            // Dados do PIX conforme doc oficial
             if (pixResult.point_of_interaction?.transaction_data) {
                 response.qr_code = pixResult.point_of_interaction.transaction_data.qr_code;
                 response.qr_code_base64 = pixResult.point_of_interaction.transaction_data.qr_code_base64;
@@ -312,15 +280,12 @@ router.post('/process_payment', async (req, res) => {
             stack: error.stack?.substring(0, 500)
         });
 
-        // Tratamento específico para erros MP conforme doc oficial
         if (error.cause && error.cause.length > 0) {
             const mpError = error.cause[0];
-            
             logPayment('ERRO_MP', 'error', 'MERCADO_PAGO', {
                 code: mpError.code,
                 description: mpError.description
             });
-
             return res.status(400).json({
                 error: 'Erro do Mercado Pago',
                 message: mpError.description || mpError.message,
@@ -346,7 +311,6 @@ router.post('/webhook', async (req, res) => {
         console.log('🔔 WEBHOOK OFICIAL MP RECEBIDO:', req.body);
         logPayment('WEBHOOK_RECEBIDO', req.body.data?.id || 'unknown', req.body.action, req.body);
 
-        // Responder imediatamente (padrão MP oficial)
         res.status(200).json({ 
             received: true,
             source: 'checkout_bricks_oficial',
@@ -355,7 +319,6 @@ router.post('/webhook', async (req, res) => {
 
         const { action, data, type } = req.body;
 
-        // Processar notificações de pagamento conforme doc oficial
         if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
             try {
                 const paymentDetails = await payment.get({ id: data.id });
@@ -366,16 +329,28 @@ router.post('/webhook', async (req, res) => {
                     payment_method_id: paymentDetails.payment_method_id
                 });
 
-                // Log específico para PIX aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
-                const customerEmail = paymentDetails.metadata?.customer_email;
-                await emailSender.sendPixSuccessEmail(customerEmail, paymentDetails.external_reference);
+                    const customerEmail = paymentDetails.metadata?.customer_email;
+                    await emailSender.sendPixSuccessEmail(customerEmail, paymentDetails.external_reference);
 
-                    // Notificação Whatsapp
+                    // Notificação WhatsApp
                     try {
                         await whatsappNotifier.enviarMensagemAprovacao(paymentDetails.external_reference);
                     } catch (error) {
                         console.error('❌ Erro WhatsApp PIX:', error);
+                    }
+
+                    // Agendamento segundo WhatsApp (24h)
+                    try {
+                        const cliente = await whatsappNotifier.buscarCliente(paymentDetails.external_reference);
+                        if (cliente) {
+                            const numero = String(cliente.telefone).replace(/\D/g, '');
+                            const numeroFinal = numero.startsWith('55') ? numero : numero.startsWith('0') ? `55${numero.slice(1)}` : `55${numero}`;
+                            const customerEmail = paymentDetails.metadata?.customer_email; // ← adiciona isso
+                            await agendarEnvio(paymentDetails.external_reference, cliente.nome, numeroFinal, customerEmail); // ← passa email
+                        }
+                    } catch (error) {
+                        console.error('❌ Erro ao agendar segundo WhatsApp:', error);
                     }
 
                     // Notificação Pushover
@@ -384,7 +359,7 @@ router.post('/webhook', async (req, res) => {
                     } catch (error) {
                         console.error('❌ Erro Pushover PIX:', error);
                     }
-    
+
                     logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
                         transaction_amount: paymentDetails.transaction_amount,
@@ -392,7 +367,6 @@ router.post('/webhook', async (req, res) => {
                     });
                 }
 
-                // Log específico para cartão aprovado
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
                     logPayment('CARTÃO_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                         uid: paymentDetails.external_reference,
@@ -409,16 +383,13 @@ router.post('/webhook', async (req, res) => {
             }
         }
 
-        // Processar notificações de merchant_order conforme doc oficial
         if (type === 'merchant_order' && data && data.id) {
             try {
                 const orderDetails = await merchantOrder.get({ merchantOrderId: data.id });
-                
                 logPayment('MERCHANT_ORDER', data.id, orderDetails.status, {
                     order_status: orderDetails.order_status,
                     payments: orderDetails.payments?.length || 0
                 });
-
             } catch (error) {
                 console.error('❌ Erro ao buscar merchant order:', error);
                 logPayment('MERCHANT_ORDER_ERRO', data.id, 'ERRO_CONSULTA', {
@@ -443,7 +414,7 @@ router.post('/webhook', async (req, res) => {
 });
 
 // ============================================
-// CONSULTAR PAGAMENTO PARA POLLING - CONFORME DOC OFICIAL
+// CONSULTAR PAGAMENTO PARA POLLING
 // ============================================
 
 router.get('/payment/:id', async (req, res) => {
@@ -471,7 +442,6 @@ router.get('/payment/:id', async (req, res) => {
             source: 'polling_consultation'
         };
 
-        // Adicionar dados do PIX se disponíveis conforme doc oficial
         if (paymentDetails.payment_method_id === 'pix' && paymentDetails.point_of_interaction?.transaction_data) {
             response.qr_code = paymentDetails.point_of_interaction.transaction_data.qr_code;
             response.qr_code_base64 = paymentDetails.point_of_interaction.transaction_data.qr_code_base64;
@@ -502,7 +472,6 @@ router.get('/callback', (req, res) => {
     console.log('🔄 CALLBACK OFICIAL RECEBIDO:', req.query);
     logPayment('CALLBACK', req.query.payment_id || 'unknown', 'CALLBACK', req.query);
     
-    // Redirecionar para resultado com UID se disponível
     if (req.query.external_reference) {
         res.redirect(`https://www.suellenseragi.com.br/resultado4?uid=${req.query.external_reference}`);
     } else {
