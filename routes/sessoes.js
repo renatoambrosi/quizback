@@ -1,31 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { salvarSessaoAgendada } = require('../db');
-
-// ============================================
-// UTILITÁRIO — próximo sábado a partir de amanhã
-// ============================================
+const config = require('../config');
+const { salvarSessaoAgendada, registrarMensagem } = require('../db');
 
 function proximoSabado() {
     const hoje = new Date();
     const amanha = new Date(hoje);
     amanha.setDate(hoje.getDate() + 1);
     amanha.setHours(0, 0, 0, 0);
-    const diasParaSabado = (6 - amanha.getDay() + 7) % 7;
+    const dias = (6 - amanha.getDay() + 7) % 7;
     const sabado = new Date(amanha);
-    sabado.setDate(amanha.getDate() + diasParaSabado);
+    sabado.setDate(amanha.getDate() + dias);
     return sabado;
 }
 
 function formatarDataPtBR(data) {
     const meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    return `${data.getDate()} de ${meses[data.getMonth()]}`;
+    return `Sábado, ${data.getDate()} de ${meses[data.getMonth()]}`;
 }
 
-// ============================================
-// POST /api/agendar-sessao
-// ============================================
+async function enviarWhatsApp(telefone, mensagem) {
+    const evolutionUrl = process.env.EVOLUTION_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instance = process.env.EVOLUTION_INSTANCE;
+    const instanceEncoded = encodeURIComponent(instance);
+    await axios.post(
+        `${evolutionUrl}/message/sendText/${instanceEncoded}`,
+        { number: telefone, text: mensagem },
+        { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
+    );
+}
 
 router.post('/agendar-sessao', async (req, res) => {
     try {
@@ -43,47 +48,45 @@ router.post('/agendar-sessao', async (req, res) => {
         const dataSessaoISO = sabado.toISOString().split('T')[0];
 
         // 1. Salvar no banco
-        await salvarSessaoAgendada(nome, numeroFinal, dataSessaoISO);
+        const sessaoId = await salvarSessaoAgendada(nome, numeroFinal, dataSessaoISO);
 
-        // 2. WhatsApp de confirmação
-        const evolutionUrl = process.env.EVOLUTION_URL;
-        const apiKey = process.env.EVOLUTION_API_KEY;
-        const instance = process.env.EVOLUTION_INSTANCE;
-        const instanceEncoded = encodeURIComponent(instance);
-
-        const mensagemConfirmacao = `Olá, ${nome}! 🎉\n\nSua vaga na Sessão de Diagnóstico está confirmada!\n\n📅 Sábado, ${dataFormatada} às 14h\n👤 ${nome}\n📱 ${telefone}\n\nVocê receberá o link para entrar na sessão aqui pelo WhatsApp na véspera. Qualquer dúvida, é só falar comigo!\n\nAté sábado! 🌟\n— Suellen Seragi`;
-
+        // 2. WhatsApp de confirmação imediato
         try {
-            await axios.post(
-                `${evolutionUrl}/message/sendText/${instanceEncoded}`,
-                { number: numeroFinal, text: mensagemConfirmacao },
-                { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
-            );
-            console.log(`✅ WhatsApp de confirmação enviado para ${nome} (${numeroFinal})`);
+            await enviarWhatsApp(numeroFinal, config.mensagens.confirmacao(nome, dataFormatada));
+            await registrarMensagem(sessaoId, 'sessoes_agendadas', 'confirmacao');
+            console.log(`✅ Confirmação enviada para ${nome}`);
         } catch (err) {
-            console.error('❌ Erro ao enviar WhatsApp de confirmação:', err.message);
+            console.error('❌ Erro confirmação WhatsApp:', err.message);
         }
 
-        // 3. Pushover
+        // 3. Link do Meet — 5 minutos depois
+        setTimeout(async () => {
+            try {
+                await enviarWhatsApp(numeroFinal, config.mensagens.linkMeet(nome, config.meetLink));
+                await registrarMensagem(sessaoId, 'sessoes_agendadas', 'link_meet');
+                console.log(`✅ Link Meet enviado para ${nome}`);
+            } catch (err) {
+                console.error('❌ Erro link Meet WhatsApp:', err.message);
+            }
+        }, 5 * 60 * 1000); // 5 minutos
+
+        // 4. Pushover
         try {
             await axios.post('https://api.pushover.net/1/messages.json', {
                 token: 'axfum4x76e38hzuuxjrkb3sh2febbw',
                 user: process.env.PUSHOVER_USER_KEY,
                 title: '🗓️ Nova Sessão Confirmada!',
-                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 Sábado ${dataFormatada} às 14h\n📱 ${telefone}`,
-                sound: 'agendamento', // <-- Use o nome exatamente como aparece no seu painel
-                priority: 1
+                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 ${dataFormatada} às 14h\n📱 ${telefone}`
             });
-            console.log(`🔔 Pushover enviado para agendamento de ${nome}`);
         } catch (err) {
-            console.error('❌ Erro ao enviar Pushover:', err.message);
+            console.error('❌ Erro Pushover:', err.message);
         }
 
         return res.status(200).json({
             success: true,
             nome,
             telefone,
-            data: `Sábado, ${dataFormatada} às 14h`
+            data: `${dataFormatada} às 14h`
         });
 
     } catch (error) {
