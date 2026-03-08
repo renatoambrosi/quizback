@@ -1,46 +1,128 @@
 const cron = require('node-cron');
 const axios = require('axios');
-const { buscarPendentes, marcarEnviado } = require('./db');
+const config = require('./config');
+const {
+    buscarPendentes,
+    buscarParaReconvite,
+    buscarConfirmadosParaSabado,
+    marcarEnviado,
+    registrarMensagem,
+    jaEnviou
+} = require('./db');
+
+async function enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem) {
+    const instanceEncoded = encodeURIComponent(instance);
+    await axios.post(
+        `${evolutionUrl}/message/sendText/${instanceEncoded}`,
+        { number: telefone, text: mensagem },
+        { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
+    );
+}
 
 function iniciarScheduler(evolutionUrl, apiKey, instance) {
     console.log('⏰ Scheduler de WhatsApp iniciado');
 
-    // Roda todos os dias às 13h40, exceto domingo
-    cron.schedule('40 13 * * 1-6', async () => {
-        const diaSemana = new Date().getDay();
+    // ── 1. CONVITE INICIAL + RECONVITE — Seg-Sab às 13h40 ──
+    cron.schedule(config.horarios.envioConvite, async () => {
+        console.log('⏰ 13h40 — Verificando convites e reconvites...');
 
-        // Garantia extra: nunca roda no domingo
-        if (diaSemana === 0) {
-            console.log('⏰ Domingo — sem envios. Pulando...');
-            return;
+        // Convites iniciais
+        const pendentes = await buscarPendentes();
+        console.log(`📋 ${pendentes.length} convite(s) pendente(s)`);
+        for (const r of pendentes) {
+            try {
+                const nomeEncoded = encodeURIComponent(r.nome);
+                const refEncoded = encodeURIComponent(r.telefone);
+                const link = `https://agendamento.suellenseragi.com.br?name=${nomeEncoded}&ref=${refEncoded}`;
+                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.reconvite(r.nome, link));
+                await marcarEnviado(r.id);
+                await registrarMensagem(r.id, 'whatsapp_agendados', 'convite');
+                console.log(`✅ Convite enviado para ${r.nome}`);
+            } catch (err) {
+                console.error(`❌ Erro convite ${r.nome}:`, err.message);
+            }
         }
 
-        console.log('⏰ 13h40 — Verificando envios agendados...');
-        const pendentes = await buscarPendentes();
-        console.log(`📋 ${pendentes.length} envio(s) pendente(s) encontrado(s)`);
-
-        for (const registro of pendentes) {
+        // Reconvites (48h sem confirmação)
+        const reconvites = await buscarParaReconvite();
+        console.log(`📋 ${reconvites.length} reconvite(s) pendente(s)`);
+        for (const r of reconvites) {
             try {
-                const instanceEncoded = encodeURIComponent(instance);
-                const nomeEncoded = encodeURIComponent(registro.nome);
-                const refEncoded = encodeURIComponent(registro.telefone);
+                const nomeEncoded = encodeURIComponent(r.nome);
+                const refEncoded = encodeURIComponent(r.telefone);
                 const link = `https://agendamento.suellenseragi.com.br?name=${nomeEncoded}&ref=${refEncoded}`;
+                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.reconvite(r.nome, link));
+                await registrarMensagem(r.id, 'whatsapp_agendados', 'reconvite');
+                console.log(`✅ Reconvite enviado para ${r.nome}`);
+            } catch (err) {
+                console.error(`❌ Erro reconvite ${r.nome}:`, err.message);
+            }
+        }
+    });
 
-                const mensagem = `Olá, ${registro.nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade.\n\nGostaria de te convidar para uma Sessão de Diagnóstico gratuita comigo, onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para confirmar sua vaga:\n${link}`;
+    // ── 2. QUARTA — aquecimento ──
+    cron.schedule(config.horarios.quarta, async () => {
+        console.log('⏰ Quarta — enviando aquecimento...');
+        const confirmados = await buscarConfirmadosParaSabado();
+        for (const r of confirmados) {
+            try {
+                if (await jaEnviou(r.id, 'sessoes_agendadas', 'quarta')) continue;
+                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.quarta(r.nome));
+                await registrarMensagem(r.id, 'sessoes_agendadas', 'quarta');
+                console.log(`✅ Quarta enviado para ${r.nome}`);
+            } catch (err) {
+                console.error(`❌ Erro quarta ${r.nome}:`, err.message);
+            }
+        }
+    });
 
-                await axios.post(
-                    `${evolutionUrl}/message/sendText/${instanceEncoded}`,
-                    { number: registro.telefone, text: mensagem },
-                    { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
-                );
+    // ── 3. SEXTA — "é amanhã" ──
+    cron.schedule(config.horarios.sexta, async () => {
+        console.log('⏰ Sexta — enviando "é amanhã"...');
+        const confirmados = await buscarConfirmadosParaSabado();
+        for (const r of confirmados) {
+            try {
+                if (await jaEnviou(r.id, 'sessoes_agendadas', 'sexta')) continue;
+                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.sexta(r.nome));
+                await registrarMensagem(r.id, 'sessoes_agendadas', 'sexta');
+                console.log(`✅ Sexta enviado para ${r.nome}`);
+            } catch (err) {
+                console.error(`❌ Erro sexta ${r.nome}:`, err.message);
+            }
+        }
+    });
 
-                await marcarEnviado(registro.id);
-                console.log(`✅ WhatsApp enviado para ${registro.nome} (${registro.telefone})`);
-            } catch (error) {
-                console.error(`❌ Erro ao enviar para ${registro.nome}:`, error.message);
+    // ── 4. SÁBADO 13h — 1 hora antes ──
+    cron.schedule(config.horarios.sabadoUmaHora, async () => {
+        console.log('⏰ Sábado 13h — enviando "1 hora"...');
+        const confirmados = await buscarConfirmadosParaSabado();
+        for (const r of confirmados) {
+            try {
+                if (await jaEnviou(r.id, 'sessoes_agendadas', 'sabado_1h')) continue;
+                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.sabadoUmaHora(r.nome, config.meetLink));
+                await registrarMensagem(r.id, 'sessoes_agendadas', 'sabado_1h');
+                console.log(`✅ Sábado 1h enviado para ${r.nome}`);
+            } catch (err) {
+                console.error(`❌ Erro sábado 1h ${r.nome}:`, err.message);
+            }
+        }
+    });
+
+    // ── 5. SÁBADO 13h45 — 15 minutos antes ──
+    cron.schedule(config.horarios.sabadoQuinzeMin, async () => {
+        console.log('⏰ Sábado 13h45 — enviando "15 minutos"...');
+        const confirmados = await buscarConfirmadosParaSabado();
+        for (const r of confirmados) {
+            try {
+                if (await jaEnviou(r.id, 'sessoes_agendadas', 'sabado_15min')) continue;
+                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.sabadoQuinzeMin(r.nome, config.meetLink));
+                await registrarMensagem(r.id, 'sessoes_agendadas', 'sabado_15min');
+                console.log(`✅ Sábado 15min enviado para ${r.nome}`);
+            } catch (err) {
+                console.error(`❌ Erro sábado 15min ${r.nome}:`, err.message);
             }
         }
     });
 }
 
-module.exports = { iniciarScheduler };
+module.exports = { iniciarScheduler, enviarWhatsApp };
