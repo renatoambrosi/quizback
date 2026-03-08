@@ -56,6 +56,16 @@ function calcularEnviarEm() {
 // ── WHATSAPP_AGENDADOS ──
 async function agendarEnvio(uid, nome, telefone, email) {
     try {
+        const duplicata = await pool.query(
+            `SELECT 1 FROM whatsapp_agendados 
+             WHERE telefone = $1 
+             AND criado_em >= NOW() - INTERVAL '24 hours'`,
+            [telefone]
+        );
+        if (duplicata.rows.length > 0) {
+            console.log(`⚠️ Agendamento ignorado — telefone ${telefone} já registrado nas últimas 24h`);
+            return;
+        }
         const enviarEm = calcularEnviarEm();
         await pool.query(
             `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em) VALUES ($1, $2, $3, $4, $5)`,
