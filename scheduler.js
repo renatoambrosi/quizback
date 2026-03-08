@@ -5,21 +5,23 @@ const { buscarPendentes, marcarEnviado } = require('./db');
 function iniciarScheduler(evolutionUrl, apiKey, instance) {
     console.log('⏰ Scheduler de WhatsApp iniciado');
 
-    cron.schedule('0 * * * *', async () => {
-        const hora = new Date().getHours();
+    // Roda todos os dias às 13h40, exceto domingo
+    cron.schedule('40 13 * * 1-6', async () => {
+        const diaSemana = new Date().getDay();
 
-        if (hora < 8 || hora >= 20) {
-            console.log(`⏰ Fora do horário de envio (${hora}h). Pulando...`);
+        // Garantia extra: nunca roda no domingo
+        if (diaSemana === 0) {
+            console.log('⏰ Domingo — sem envios. Pulando...');
             return;
         }
 
-        console.log('⏰ Verificando envios agendados...');
+        console.log('⏰ 13h40 — Verificando envios agendados...');
         const pendentes = await buscarPendentes();
+        console.log(`📋 ${pendentes.length} envio(s) pendente(s) encontrado(s)`);
 
         for (const registro of pendentes) {
             try {
                 const instanceEncoded = encodeURIComponent(instance);
-
                 const nomeEncoded = encodeURIComponent(registro.nome);
                 const refEncoded = encodeURIComponent(registro.telefone);
                 const link = `https://agendamento.suellenseragi.com.br?name=${nomeEncoded}&ref=${refEncoded}`;
@@ -33,7 +35,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
                 );
 
                 await marcarEnviado(registro.id);
-                console.log(`✅ Segundo WhatsApp enviado para ${registro.nome} (${registro.telefone})`);
+                console.log(`✅ WhatsApp enviado para ${registro.nome} (${registro.telefone})`);
             } catch (error) {
                 console.error(`❌ Erro ao enviar para ${registro.nome}:`, error.message);
             }
