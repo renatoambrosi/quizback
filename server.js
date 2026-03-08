@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const paymentRoutes = require('./routes/payments');
 const sessoesRoutes = require('./routes/sessoes');
+const adminRoutes = require('./routes/admin');
 const { initDb } = require('./db');
 const { iniciarScheduler } = require('./scheduler');
 
@@ -135,6 +136,8 @@ app.get('/api/mp-health', async (req, res) => {
 
 app.use('/api', paymentRoutes);
 app.use('/api', sessoesRoutes);
+app.use('/api', adminRoutes);  // ← adiciona
+app.use('/', adminRoutes);     // ← adiciona
 
 app.get('/api/environment', (req, res) => {
   res.status(200).json({
