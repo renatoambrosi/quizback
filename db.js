@@ -1,5 +1,4 @@
 const { Pool } = require('pg');
-
 const pool = new Pool({
     connectionString: process.env.WHATSAPP_DB_URL,
     ssl: { rejectUnauthorized: false }
@@ -19,7 +18,6 @@ async function initDb() {
                 criado_em TIMESTAMP DEFAULT NOW()
             )
         `);
-
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sessoes_agendadas (
                 id SERIAL PRIMARY KEY,
@@ -29,16 +27,35 @@ async function initDb() {
                 confirmado_em TIMESTAMP DEFAULT NOW()
             )
         `);
-
         console.log('✅ Banco de dados iniciado (whatsapp_agendados + sessoes_agendadas)');
     } catch (error) {
         console.error('❌ Erro ao iniciar banco:', error.message);
     }
 }
 
+function calcularEnviarEm() {
+    const agora = new Date();
+    const hora = agora.getHours();
+
+    // Até 6h → envia hoje às 13h40
+    // Após 6h → envia amanhã às 13h40
+    const base = new Date(agora);
+    if (hora >= 6) {
+        base.setDate(base.getDate() + 1);
+    }
+    base.setHours(13, 40, 0, 0);
+
+    // Se cair no domingo → empurra para segunda
+    if (base.getDay() === 0) {
+        base.setDate(base.getDate() + 1);
+    }
+
+    return base;
+}
+
 async function agendarEnvio(uid, nome, telefone, email) {
     try {
-        const enviarEm = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const enviarEm = calcularEnviarEm();
         await pool.query(
             `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em) VALUES ($1, $2, $3, $4, $5)`,
             [uid, nome, telefone, email, enviarEm]
