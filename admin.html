@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painel Admin — Teste de Prosperidade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *:before, *:after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #f5f4f0; color: #2d2a1e; font-size: 14px; }
+
+    header {
+      background: #9b8732;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    header span { font-size: 0.8rem; opacity: 0.8; }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 16px 24px 0;
+      border-bottom: 2px solid #e0d9bc;
+      background: white;
+    }
+    .tab {
+      padding: 10px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #7a7464;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 120ms;
+    }
+    .tab.active { color: #9b8732; border-bottom-color: #9b8732; }
+    .tab:hover { color: #9b8732; }
+
+    .content { padding: 24px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: white;
+      border: 1px solid #e0d9bc;
+      border-radius: 10px;
+      padding: 16px 20px;
+      min-width: 140px;
+    }
+    .stat-card .num { font-size: 1.8rem; font-weight: 800; color: #9b8732; }
+    .stat-card .lbl { font-size: 0.78rem; color: #7a7464; margin-top: 2px; }
+
+    .card {
+      background: white;
+      border: 1px solid #e0d9bc;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 14px 20px;
+      background: #fdf8e8;
+      border-bottom: 1px solid #e0d9bc;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #504b3a;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: #fafaf7;
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9b8732;
+      border-bottom: 1px solid #e0d9bc;
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0ece0;
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafaf7; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .badge-green { background: #e8f5e9; color: #2e7d32; }
+    .badge-yellow { background: #fff8e1; color: #f57f17; }
+    .badge-gray { background: #f0f0f0; color: #666; }
+    .badge-blue { background: #e3f2fd; color: #1565c0; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      transition: opacity 120ms;
+    }
+    .btn:hover { opacity: 0.8; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-gold { background: #9b8732; color: white; }
+    .btn-outline { background: white; color: #9b8732; border: 1px solid #bcac5a; }
+    .btn-danger { background: #ffebee; color: #c62828; }
+    .btn-sm { padding: 4px 8px; font-size: 0.72rem; }
+
+    .actions { display: flex; gap: 4px; flex-wrap: wrap; }
+
+    .edit-row { display: none; }
+    .edit-row td { background: #fdf8e8; padding: 12px 14px; }
+    .edit-row input {
+      height: 32px;
+      padding: 0 8px;
+      border: 1px solid #bcac5a;
+      border-radius: 6px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .edit-row label { font-size: 0.72rem; font-weight: 600; color: #9b8732; display: block; margin-bottom: 2px; }
+
+    .etapas-grid {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #2e7d32;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      opacity: 0;
+      transition: opacity 300ms;
+      z-index: 1000;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .toast.error { background: #c62828; }
+
+    .refresh-btn {
+      background: none;
+      border: 1px solid #bcac5a;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      color: #9b8732;
+      font-weight: 600;
+    }
+    .refresh-btn:hover { background: #fdf8e8; }
+
+    .empty { text-align: center; padding: 40px; color: #9a9480; font-size: 0.9rem; }
+
+    @media (max-width: 600px) {
+      .content { padding: 16px; }
+      .tabs { padding: 12px 16px 0; overflow-x: auto; }
+      .stats { gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🌟 Painel Admin — Teste de Prosperidade</h1>
+  <span id="lastUpdate">—</span>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('leads')">📋 Leads</button>
+  <button class="tab" onclick="showTab('sessoes')">✅ Confirmados</button>
+  <button class="tab" onclick="showTab('mensagens')">📨 Mensagens Enviadas</button>
+</div>
+
+<div class="content">
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat-card"><div class="num" id="statLeads">—</div><div class="lbl">Total de leads</div></div>
+    <div class="stat-card"><div class="num" id="statPendentes">—</div><div class="lbl">Aguardando convite</div></div>
+    <div class="stat-card"><div class="num" id="statConfirmados">—</div><div class="lbl">Confirmados</div></div>
+    <div class="stat-card"><div class="num" id="statMensagens">—</div><div class="lbl">Mensagens enviadas</div></div>
+    <button class="refresh-btn" onclick="carregarDados()">🔄 Atualizar</button>
+  </div>
+
+  <!-- LEADS -->
+  <div id="panel-leads" class="panel active">
+    <div class="card">
+      <div class="card-header">Leads na fila de convite</div>
+      <div style="overflow-x:auto">
+        <table id="tabelaLeads">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>Email</th>
+              <th>Enviar em</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="bodyLeads"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSÕES -->
+  <div id="panel-sessoes" class="panel">
+    <div class="card">
+      <div class="card-header">Confirmados na Sessão de Diagnóstico</div>
+      <div style="overflow-x:auto">
+        <table id="tabelaSessoes">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Telefone</th>
+              <th>Data Sessão</th>
+              <th>Confirmado em</th>
+              <th>Etapas enviadas</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="bodySessoes"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENSAGENS -->
+  <div id="panel-mensagens" class="panel">
+    <div class="card">
+      <div class="card-header">Histórico de mensagens enviadas</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Referência</th>
+              <th>Tabela</th>
+              <th>Etapa</th>
+              <th>Enviado em</th>
+            </tr>
+          </thead>
+          <tbody id="bodyMensagens"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let dadosGlobais = { leads: [], sessoes: [], mensagens: [] };
+
+  function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+  }
+
+  function showToast(msg, erro = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (erro ? ' error' : '');
+    setTimeout(() => t.className = 'toast', 3000);
+  }
+
+  function formatarData(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatarDataSimples(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  function etapasDeUmRegistro(id, tabela, mensagens) {
+    return mensagens.filter(m => m.referencia_id === id && m.tabela_origem === tabela).map(m => m.etapa);
+  }
+
+  function badgeEtapa(etapa) {
+    const cores = {
+      convite: 'badge-yellow', reconvite: 'badge-blue',
+      confirmacao: 'badge-green', link_meet: 'badge-green',
+      quarta: 'badge-blue', sexta: 'badge-blue',
+      sabado_1h: 'badge-gold', sabado_15min: 'badge-gold'
+    };
+    return `<span class="badge ${cores[etapa] || 'badge-gray'}">${etapa}</span>`;
+  }
+
+  async function carregarDados() {
+    try {
+      const resp = await fetch('/admin/dados');
+      if (resp.status === 401) { location.reload(); return; }
+      const data = await resp.json();
+      dadosGlobais = data;
+
+      // Stats
+      document.getElementById('statLeads').textContent = data.leads.length;
+      document.getElementById('statPendentes').textContent = data.leads.filter(l => !l.enviado).length;
+      document.getElementById('statConfirmados').textContent = data.sessoes.length;
+      document.getElementById('statMensagens').textContent = data.mensagens.length;
+      document.getElementById('lastUpdate').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+
+      renderLeads(data);
+      renderSessoes(data);
+      renderMensagens(data);
+    } catch (err) {
+      showToast('Erro ao carregar dados', true);
+    }
+  }
+
+  function renderLeads({ leads, mensagens }) {
+    const tbody = document.getElementById('bodyLeads');
+    if (!leads.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum lead encontrado</td></tr>'; return; }
+
+    tbody.innerHTML = leads.map(l => {
+      const etapas = etapasDeUmRegistro(l.id, 'whatsapp_agendados', mensagens);
+      const status = l.enviado
+        ? `<span class="badge badge-green">Convite enviado</span>`
+        : `<span class="badge badge-yellow">Aguardando</span>`;
+
+      return `
+        <tr>
+          <td>${l.id}</td>
+          <td><strong>${l.nome || '—'}</strong></td>
+          <td>${l.telefone || '—'}</td>
+          <td>${l.email || '—'}</td>
+          <td>${formatarData(l.enviar_em)}</td>
+          <td>${status} ${etapas.map(badgeEtapa).join(' ')}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-outline btn-sm" onclick="toggleEdit('lead', ${l.id})">✏️ Editar</button>
+              <button class="btn btn-gold btn-sm" onclick="enviarManual('whatsapp_agendados', ${l.id}, '${(l.nome||'').replace(/'/g,"\\'")}', '${l.telefone}', 'convite')">📤 Convite</button>
+              <button class="btn btn-outline btn-sm" onclick="enviarManual('whatsapp_agendados', ${l.id}, '${(l.nome||'').replace(/'/g,"\\'")}', '${l.telefone}', 'reconvite')">🔁 Reconvite</button>
+            </div>
+          </td>
+        </tr>
+        <tr class="edit-row" id="edit-lead-${l.id}">
+          <td colspan="7">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:600px">
+              <div><label>Nome</label><input id="el-nome-${l.id}" value="${l.nome || ''}"/></div>
+              <div><label>Telefone</label><input id="el-tel-${l.id}" value="${l.telefone || ''}"/></div>
+              <div><label>Email</label><input id="el-email-${l.id}" value="${l.email || ''}"/></div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-gold btn-sm" onclick="salvarLead(${l.id})">💾 Salvar</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleEdit('lead', ${l.id})">Cancelar</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderSessoes({ sessoes, mensagens }) {
+    const tbody = document.getElementById('bodySessoes');
+    if (!sessoes.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma confirmação ainda</td></tr>'; return; }
+
+    const etapasDisponiveis = ['link_meet', 'quarta', 'sexta', 'sabado_1h', 'sabado_15min'];
+
+    tbody.innerHTML = sessoes.map(s => {
+      const etapas = etapasDeUmRegistro(s.id, 'sessoes_agendadas', mensagens);
+
+      const botoesEtapas = etapasDisponiveis.map(e => {
+        const jaFoi = etapas.includes(e);
+        return `<button class="btn btn-sm ${jaFoi ? 'badge-gray' : 'btn-outline'}" 
+          onclick="enviarManual('sessoes_agendadas', ${s.id}, '${(s.nome||'').replace(/'/g,"\\'")}', '${s.telefone}', '${e}')"
+          title="${jaFoi ? 'Já enviado — clique para reenviar' : 'Enviar agora'}"
+          >${e.replace('_', ' ')}</button>`;
+      }).join('');
+
+      return `
+        <tr>
+          <td>${s.id}</td>
+          <td><strong>${s.nome}</strong></td>
+          <td>${s.telefone}</td>
+          <td>${formatarDataSimples(s.data_sessao)}</td>
+          <td>${formatarData(s.confirmado_em)}</td>
+          <td><div class="etapas-grid">${etapas.map(badgeEtapa).join(' ') || '—'}</div></td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-outline btn-sm" onclick="toggleEdit('sessao', ${s.id})">✏️ Editar</button>
+              <div class="etapas-grid" style="margin-top:4px">${botoesEtapas}</div>
+            </div>
+          </td>
+        </tr>
+        <tr class="edit-row" id="edit-sessao-${s.id}">
+          <td colspan="7">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:500px">
+              <div><label>Nome</label><input id="es-nome-${s.id}" value="${s.nome || ''}"/></div>
+              <div><label>Telefone</label><input id="es-tel-${s.id}" value="${s.telefone || ''}"/></div>
+              <div><label>Data Sessão</label><input id="es-data-${s.id}" type="date" value="${s.data_sessao ? s.data_sessao.split('T')[0] : ''}"/></div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-gold btn-sm" onclick="salvarSessao(${s.id})">💾 Salvar</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleEdit('sessao', ${s.id})">Cancelar</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderMensagens({ mensagens }) {
+    const tbody = document.getElementById('bodyMensagens');
+    if (!mensagens.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma mensagem enviada ainda</td></tr>'; return; }
+    tbody.innerHTML = mensagens.map(m => `
+      <tr>
+        <td>${m.id}</td>
+        <td>#${m.referencia_id}</td>
+        <td><span class="badge badge-gray">${m.tabela_origem}</span></td>
+        <td>${badgeEtapa(m.etapa)}</td>
+        <td>${formatarData(m.enviado_em)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function toggleEdit(tipo, id) {
+    const row = document.getElementById(`edit-${tipo}-${id}`);
+    row.style.display = row.style.display === 'table-row' ? 'none' : 'table-row';
+  }
+
+  async function salvarLead(id) {
+    const campos = {
+      nome: document.getElementById(`el-nome-${id}`).value,
+      telefone: document.getElementById(`el-tel-${id}`).value,
+      email: document.getElementById(`el-email-${id}`).value,
+    };
+    try {
+      await fetch(`/admin/lead/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campos) });
+      showToast('✅ Lead atualizado!');
+      carregarDados();
+    } catch (err) { showToast('Erro ao salvar', true); }
+  }
+
+  async function salvarSessao(id) {
+    const campos = {
+      nome: document.getElementById(`es-nome-${id}`).value,
+      telefone: document.getElementById(`es-tel-${id}`).value,
+      data_sessao: document.getElementById(`es-data-${id}`).value,
+    };
+    try {
+      await fetch(`/admin/sessao/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campos) });
+      showToast('✅ Sessão atualizada!');
+      carregarDados();
+    } catch (err) { showToast('Erro ao salvar', true); }
+  }
+
+  async function enviarManual(tipo, id, nome, telefone, etapa) {
+    if (!confirm(`Enviar "${etapa}" para ${nome}?`)) return;
+    try {
+      const resp = await fetch('/admin/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, id, nome, telefone, etapa })
+      });
+      const data = await resp.json();
+      if (data.success) { showToast(`✅ "${etapa}" enviado para ${nome}!`); carregarDados(); }
+      else showToast(data.error || 'Erro ao enviar', true);
+    } catch (err) { showToast('Erro de conexão', true); }
+  }
+
+  // Carrega ao iniciar e a cada 60s
+  carregarDados();
+  setInterval(carregarDados, 60000);
+</script>
+</body>
+</html>
