@@ -11,35 +11,25 @@
     body { font-family: 'Inter', sans-serif; background: #f5f4f0; color: #2d2a1e; font-size: 14px; }
 
     header {
-      background: #9b8732;
-      color: white;
+      background: #9b8732; color: white;
       padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
     }
     header h1 { font-size: 1.1rem; font-weight: 700; }
     header span { font-size: 0.8rem; opacity: 0.8; }
 
     .tabs {
-      display: flex;
-      gap: 4px;
+      display: flex; gap: 4px;
       padding: 16px 24px 0;
       border-bottom: 2px solid #e0d9bc;
       background: white;
+      overflow-x: auto;
     }
     .tab {
-      padding: 10px 20px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.88rem;
-      font-weight: 600;
-      color: #7a7464;
-      border-bottom: 2px solid transparent;
-      margin-bottom: -2px;
-      transition: all 120ms;
+      padding: 10px 18px; border: none; background: none; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600;
+      color: #7a7464; border-bottom: 2px solid transparent; margin-bottom: -2px;
+      white-space: nowrap; transition: all 120ms;
     }
     .tab.active { color: #9b8732; border-bottom-color: #9b8732; }
     .tab:hover { color: #9b8732; }
@@ -48,151 +38,103 @@
     .panel { display: none; }
     .panel.active { display: block; }
 
-    .stats {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
+    .stats { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
     .stat-card {
-      background: white;
-      border: 1px solid #e0d9bc;
-      border-radius: 10px;
-      padding: 16px 20px;
-      min-width: 140px;
+      background: white; border: 1px solid #e0d9bc;
+      border-radius: 10px; padding: 14px 20px; min-width: 130px;
     }
-    .stat-card .num { font-size: 1.8rem; font-weight: 800; color: #9b8732; }
-    .stat-card .lbl { font-size: 0.78rem; color: #7a7464; margin-top: 2px; }
+    .stat-card .num { font-size: 1.6rem; font-weight: 800; color: #9b8732; }
+    .stat-card .lbl { font-size: 0.75rem; color: #7a7464; margin-top: 2px; }
 
-    .card {
-      background: white;
-      border: 1px solid #e0d9bc;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
+    .card { background: white; border: 1px solid #e0d9bc; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
     .card-header {
-      padding: 14px 20px;
-      background: #fdf8e8;
+      padding: 12px 20px; background: #fdf8e8;
       border-bottom: 1px solid #e0d9bc;
-      font-weight: 700;
-      font-size: 0.9rem;
-      color: #504b3a;
+      font-weight: 700; font-size: 0.9rem; color: #504b3a;
+      display: flex; align-items: center; justify-content: space-between;
     }
 
     table { width: 100%; border-collapse: collapse; }
     th {
-      background: #fafaf7;
-      padding: 10px 14px;
-      text-align: left;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #9b8732;
-      border-bottom: 1px solid #e0d9bc;
+      background: #fafaf7; padding: 10px 14px; text-align: left;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #9b8732; border-bottom: 1px solid #e0d9bc;
     }
-    td {
-      padding: 10px 14px;
-      border-bottom: 1px solid #f0ece0;
-      font-size: 0.85rem;
-      vertical-align: middle;
-    }
+    td { padding: 9px 14px; border-bottom: 1px solid #f0ece0; font-size: 0.84rem; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #fafaf7; }
 
     .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-size: 0.72rem;
-      font-weight: 700;
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 700;
     }
     .badge-green { background: #e8f5e9; color: #2e7d32; }
     .badge-yellow { background: #fff8e1; color: #f57f17; }
     .badge-gray { background: #f0f0f0; color: #666; }
     .badge-blue { background: #e3f2fd; color: #1565c0; }
+    .badge-red { background: #ffebee; color: #c62828; }
 
     .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 5px 10px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.78rem;
-      font-weight: 600;
-      transition: opacity 120ms;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 9px; border-radius: 6px; border: none; cursor: pointer;
+      font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 600;
+      transition: opacity 120ms; white-space: nowrap;
     }
     .btn:hover { opacity: 0.8; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-gold { background: #9b8732; color: white; }
     .btn-outline { background: white; color: #9b8732; border: 1px solid #bcac5a; }
-    .btn-danger { background: #ffebee; color: #c62828; }
-    .btn-sm { padding: 4px 8px; font-size: 0.72rem; }
+    .btn-danger { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+    .btn-cancel { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+    .btn-move { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    .btn-add { background: #9b8732; color: white; padding: 6px 14px; font-size: 0.82rem; }
 
     .actions { display: flex; gap: 4px; flex-wrap: wrap; }
 
-    .edit-row { display: none; }
-    .edit-row td { background: #fdf8e8; padding: 12px 14px; }
-    .edit-row input {
-      height: 32px;
-      padding: 0 8px;
-      border: 1px solid #bcac5a;
-      border-radius: 6px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.85rem;
-      width: 100%;
-      margin-bottom: 6px;
-    }
-    .edit-row label { font-size: 0.72rem; font-weight: 600; color: #9b8732; display: block; margin-bottom: 2px; }
+    .edit-row { display: none; background: #fdf8e8; }
+    .edit-row td { padding: 12px 14px; }
+    .edit-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; max-width: 700px; margin-bottom: 10px; }
+    .edit-fields label { font-size: 0.72rem; font-weight: 700; color: #9b8732; display: block; margin-bottom: 3px; }
+    .edit-fields input { height: 32px; padding: 0 8px; border: 1px solid #bcac5a; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 0.84rem; width: 100%; }
 
-    .etapas-grid {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+    /* MODAL */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: 100;
+      align-items: center; justify-content: center;
     }
-
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: #2e7d32;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 0.88rem;
-      opacity: 0;
-      transition: opacity 300ms;
-      z-index: 1000;
-      pointer-events: none;
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: white; border-radius: 14px; padding: 28px;
+      width: 100%; max-width: 420px; margin: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     }
-    .toast.show { opacity: 1; }
-    .toast.error { background: #c62828; }
+    .modal h3 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #504b3a; }
+    .modal .field { margin-bottom: 12px; }
+    .modal label { font-size: 0.75rem; font-weight: 700; color: #9b8732; display: block; margin-bottom: 4px; }
+    .modal input { width: 100%; height: 36px; padding: 0 10px; border: 1px solid #bcac5a; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.9rem; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+    .modal-btns .btn { flex: 1; justify-content: center; height: 36px; font-size: 0.85rem; }
 
     .refresh-btn {
-      background: none;
-      border: 1px solid #bcac5a;
-      border-radius: 6px;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.8rem;
-      color: #9b8732;
-      font-weight: 600;
+      background: none; border: 1px solid #bcac5a; border-radius: 6px;
+      padding: 6px 12px; cursor: pointer; font-family: 'Inter', sans-serif;
+      font-size: 0.8rem; color: #9b8732; font-weight: 600;
     }
     .refresh-btn:hover { background: #fdf8e8; }
 
     .empty { text-align: center; padding: 40px; color: #9a9480; font-size: 0.9rem; }
 
-    @media (max-width: 600px) {
-      .content { padding: 16px; }
-      .tabs { padding: 12px 16px 0; overflow-x: auto; }
-      .stats { gap: 10px; }
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #2e7d32; color: white; padding: 12px 20px;
+      border-radius: 8px; font-weight: 600; font-size: 0.88rem;
+      opacity: 0; transition: opacity 300ms; z-index: 200; pointer-events: none;
     }
+    .toast.show { opacity: 1; }
+    .toast.error { background: #c62828; }
+
+    .etapas-grid { display: flex; gap: 4px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -203,63 +145,71 @@
 </header>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('leads')">📋 Leads</button>
-  <button class="tab" onclick="showTab('sessoes')">✅ Confirmados</button>
-  <button class="tab" onclick="showTab('mensagens')">📨 Mensagens Enviadas</button>
+  <button class="tab active" onclick="showTab('leads', this)">📋 Leads</button>
+  <button class="tab" onclick="showTab('sessoes', this)">✅ Confirmados</button>
+  <button class="tab" onclick="showTab('cancelados', this)">❌ Cancelados</button>
+  <button class="tab" onclick="showTab('mensagens', this)">📨 Mensagens</button>
 </div>
 
 <div class="content">
-
-  <!-- STATS -->
   <div class="stats">
-    <div class="stat-card"><div class="num" id="statLeads">—</div><div class="lbl">Total de leads</div></div>
-    <div class="stat-card"><div class="num" id="statPendentes">—</div><div class="lbl">Aguardando convite</div></div>
+    <div class="stat-card"><div class="num" id="statLeads">—</div><div class="lbl">Total leads</div></div>
+    <div class="stat-card"><div class="num" id="statPendentes">—</div><div class="lbl">Aguardando envio</div></div>
     <div class="stat-card"><div class="num" id="statConfirmados">—</div><div class="lbl">Confirmados</div></div>
-    <div class="stat-card"><div class="num" id="statMensagens">—</div><div class="lbl">Mensagens enviadas</div></div>
+    <div class="stat-card"><div class="num" id="statCancelados">—</div><div class="lbl">Cancelados</div></div>
+    <div class="stat-card"><div class="num" id="statMensagens">—</div><div class="lbl">Msgs enviadas</div></div>
     <button class="refresh-btn" onclick="carregarDados()">🔄 Atualizar</button>
   </div>
 
   <!-- LEADS -->
   <div id="panel-leads" class="panel active">
     <div class="card">
-      <div class="card-header">Leads na fila de convite</div>
+      <div class="card-header">
+        Leads na fila de convite
+        <button class="btn btn-add" onclick="abrirModalAdicionar('lead')">➕ Adicionar lead</button>
+      </div>
       <div style="overflow-x:auto">
-        <table id="tabelaLeads">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Telefone</th>
-              <th>Email</th>
-              <th>Enviar em</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Nome</th><th>Telefone</th><th>Email</th>
+            <th>Enviar em</th><th>Status</th><th>Ações</th>
+          </tr></thead>
           <tbody id="bodyLeads"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- SESSÕES -->
+  <!-- CONFIRMADOS -->
   <div id="panel-sessoes" class="panel">
     <div class="card">
-      <div class="card-header">Confirmados na Sessão de Diagnóstico</div>
+      <div class="card-header">
+        Confirmados na Sessão de Diagnóstico
+        <button class="btn btn-add" onclick="abrirModalAdicionar('sessao')">➕ Adicionar confirmado</button>
+      </div>
       <div style="overflow-x:auto">
-        <table id="tabelaSessoes">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nome</th>
-              <th>Telefone</th>
-              <th>Data Sessão</th>
-              <th>Confirmado em</th>
-              <th>Etapas enviadas</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Nome</th><th>Telefone</th><th>Data Sessão</th>
+            <th>Confirmado em</th><th>Etapas enviadas</th><th>Ações</th>
+          </tr></thead>
           <tbody id="bodySessoes"><tr><td colspan="7" class="empty">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CANCELADOS -->
+  <div id="panel-cancelados" class="panel">
+    <div class="card">
+      <div class="card-header">Cancelados</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Nome</th><th>Telefone</th><th>Email</th>
+            <th>Cancelado em</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="bodyCancelados"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -271,32 +221,38 @@
       <div class="card-header">Histórico de mensagens enviadas</div>
       <div style="overflow-x:auto">
         <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Referência</th>
-              <th>Tabela</th>
-              <th>Etapa</th>
-              <th>Enviado em</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th>ID</th><th>Referência</th><th>Tabela</th><th>Etapa</th><th>Enviado em</th>
+          </tr></thead>
           <tbody id="bodyMensagens"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
   </div>
+</div>
 
+<!-- MODAL ADICIONAR -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitulo">Adicionar</h3>
+    <div id="modalCampos"></div>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-gold" onclick="confirmarAdicionar()">✅ Salvar</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-  let dadosGlobais = { leads: [], sessoes: [], mensagens: [] };
+  let dadosGlobais = { leads: [], sessoes: [], mensagens: [], cancelados: [] };
+  let modalTipo = '';
 
-  function showTab(tab) {
+  function showTab(tab, el) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    event.target.classList.add('active');
+    el.classList.add('active');
     document.getElementById('panel-' + tab).classList.add('active');
   }
 
@@ -307,29 +263,23 @@
     setTimeout(() => t.className = 'toast', 3000);
   }
 
-  function formatarData(iso) {
+  function fmt(iso) {
     if (!iso) return '—';
     return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
-  function formatarDataSimples(iso) {
+  function fmtData(iso) {
     if (!iso) return '—';
-    const d = new Date(iso + 'T00:00:00');
-    return d.toLocaleDateString('pt-BR');
+    return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR');
   }
 
-  function etapasDeUmRegistro(id, tabela, mensagens) {
+  function etapasDeUm(id, tabela, mensagens) {
     return mensagens.filter(m => m.referencia_id === id && m.tabela_origem === tabela).map(m => m.etapa);
   }
 
-  function badgeEtapa(etapa) {
-    const cores = {
-      convite: 'badge-yellow', reconvite: 'badge-blue',
-      confirmacao: 'badge-green', link_meet: 'badge-green',
-      quarta: 'badge-blue', sexta: 'badge-blue',
-      sabado_1h: 'badge-gold', sabado_15min: 'badge-gold'
-    };
-    return `<span class="badge ${cores[etapa] || 'badge-gray'}">${etapa}</span>`;
+  function badgeEtapa(e) {
+    const c = { convite:'badge-yellow', reconvite:'badge-blue', confirmacao:'badge-green', link_meet:'badge-green', quarta:'badge-blue', sexta:'badge-blue', sabado_1h:'badge-yellow', sabado_15min:'badge-yellow' };
+    return `<span class="badge ${c[e]||'badge-gray'}">${e.replace(/_/g,' ')}</span>`;
   }
 
   async function carregarDados() {
@@ -339,15 +289,16 @@
       const data = await resp.json();
       dadosGlobais = data;
 
-      // Stats
       document.getElementById('statLeads').textContent = data.leads.length;
       document.getElementById('statPendentes').textContent = data.leads.filter(l => !l.enviado).length;
       document.getElementById('statConfirmados').textContent = data.sessoes.length;
+      document.getElementById('statCancelados').textContent = data.cancelados.length;
       document.getElementById('statMensagens').textContent = data.mensagens.length;
       document.getElementById('lastUpdate').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
 
       renderLeads(data);
       renderSessoes(data);
+      renderCancelados(data);
       renderMensagens(data);
     } catch (err) {
       showToast('Erro ao carregar dados', true);
@@ -356,109 +307,125 @@
 
   function renderLeads({ leads, mensagens }) {
     const tbody = document.getElementById('bodyLeads');
-    if (!leads.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum lead encontrado</td></tr>'; return; }
-
+    if (!leads.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum lead</td></tr>'; return; }
     tbody.innerHTML = leads.map(l => {
-      const etapas = etapasDeUmRegistro(l.id, 'whatsapp_agendados', mensagens);
-      const status = l.enviado
-        ? `<span class="badge badge-green">Convite enviado</span>`
-        : `<span class="badge badge-yellow">Aguardando</span>`;
-
+      const etapas = etapasDeUm(l.id, 'whatsapp_agendados', mensagens);
+      const status = l.enviado ? `<span class="badge badge-green">Enviado</span>` : `<span class="badge badge-yellow">Aguardando</span>`;
+      const n = esc(l.nome||''); const tel = l.telefone||'';
       return `
         <tr>
           <td>${l.id}</td>
-          <td><strong>${l.nome || '—'}</strong></td>
-          <td>${l.telefone || '—'}</td>
-          <td>${l.email || '—'}</td>
-          <td>${formatarData(l.enviar_em)}</td>
+          <td><strong>${n}</strong></td>
+          <td>${tel}</td>
+          <td>${l.email||'—'}</td>
+          <td>${fmt(l.enviar_em)}</td>
           <td>${status} ${etapas.map(badgeEtapa).join(' ')}</td>
           <td>
             <div class="actions">
-              <button class="btn btn-outline btn-sm" onclick="toggleEdit('lead', ${l.id})">✏️ Editar</button>
-              <button class="btn btn-gold btn-sm" onclick="enviarManual('whatsapp_agendados', ${l.id}, '${(l.nome||'').replace(/'/g,"\\'")}', '${l.telefone}', 'convite')">📤 Convite</button>
-              <button class="btn btn-outline btn-sm" onclick="enviarManual('whatsapp_agendados', ${l.id}, '${(l.nome||'').replace(/'/g,"\\'")}', '${l.telefone}', 'reconvite')">🔁 Reconvite</button>
+              <button class="btn btn-outline" onclick="toggleEdit('lead',${l.id})">✏️</button>
+              <button class="btn btn-gold" onclick="enviarManual('whatsapp_agendados',${l.id},'${n}','${tel}','convite')">📤 Convite</button>
+              <button class="btn btn-outline" onclick="enviarManual('whatsapp_agendados',${l.id},'${n}','${tel}','reconvite')">🔁 Reconvite</button>
+              <button class="btn btn-move" onclick="mover(${l.id})">➡️ Confirmar</button>
+              <button class="btn btn-cancel" onclick="cancelar(${l.id},'${n}')">❌ Cancelar</button>
+              <button class="btn btn-danger" onclick="deletar('lead',${l.id},'${n}')">🗑️</button>
             </div>
           </td>
         </tr>
         <tr class="edit-row" id="edit-lead-${l.id}">
           <td colspan="7">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:600px">
-              <div><label>Nome</label><input id="el-nome-${l.id}" value="${l.nome || ''}"/></div>
-              <div><label>Telefone</label><input id="el-tel-${l.id}" value="${l.telefone || ''}"/></div>
-              <div><label>Email</label><input id="el-email-${l.id}" value="${l.email || ''}"/></div>
+            <div class="edit-fields">
+              <div><label>Nome</label><input id="el-nome-${l.id}" value="${n}"/></div>
+              <div><label>Telefone</label><input id="el-tel-${l.id}" value="${tel}"/></div>
+              <div><label>Email</label><input id="el-email-${l.id}" value="${l.email||''}"/></div>
             </div>
-            <div style="margin-top:10px;display:flex;gap:8px">
-              <button class="btn btn-gold btn-sm" onclick="salvarLead(${l.id})">💾 Salvar</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleEdit('lead', ${l.id})">Cancelar</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-gold" onclick="salvarLead(${l.id})">💾 Salvar</button>
+              <button class="btn btn-outline" onclick="toggleEdit('lead',${l.id})">Cancelar</button>
             </div>
           </td>
-        </tr>
-      `;
+        </tr>`;
     }).join('');
   }
 
   function renderSessoes({ sessoes, mensagens }) {
     const tbody = document.getElementById('bodySessoes');
-    if (!sessoes.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma confirmação ainda</td></tr>'; return; }
-
-    const etapasDisponiveis = ['link_meet', 'quarta', 'sexta', 'sabado_1h', 'sabado_15min'];
-
+    if (!sessoes.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma confirmação</td></tr>'; return; }
+    const etapasDisp = ['link_meet','quarta','sexta','sabado_1h','sabado_15min'];
     tbody.innerHTML = sessoes.map(s => {
-      const etapas = etapasDeUmRegistro(s.id, 'sessoes_agendadas', mensagens);
-
-      const botoesEtapas = etapasDisponiveis.map(e => {
+      const etapas = etapasDeUm(s.id, 'sessoes_agendadas', mensagens);
+      const n = esc(s.nome||''); const tel = s.telefone||'';
+      const botoesEtapas = etapasDisp.map(e => {
         const jaFoi = etapas.includes(e);
-        return `<button class="btn btn-sm ${jaFoi ? 'badge-gray' : 'btn-outline'}" 
-          onclick="enviarManual('sessoes_agendadas', ${s.id}, '${(s.nome||'').replace(/'/g,"\\'")}', '${s.telefone}', '${e}')"
-          title="${jaFoi ? 'Já enviado — clique para reenviar' : 'Enviar agora'}"
-          >${e.replace('_', ' ')}</button>`;
+        return `<button class="btn ${jaFoi?'badge-gray':'btn-outline'}" onclick="enviarManual('sessoes_agendadas',${s.id},'${n}','${tel}','${e}')" title="${jaFoi?'Já enviado — reenviar?':''}">${e.replace(/_/g,' ')}</button>`;
       }).join('');
-
       return `
         <tr>
           <td>${s.id}</td>
-          <td><strong>${s.nome}</strong></td>
-          <td>${s.telefone}</td>
-          <td>${formatarDataSimples(s.data_sessao)}</td>
-          <td>${formatarData(s.confirmado_em)}</td>
-          <td><div class="etapas-grid">${etapas.map(badgeEtapa).join(' ') || '—'}</div></td>
+          <td><strong>${n}</strong></td>
+          <td>${tel}</td>
+          <td>${fmtData(s.data_sessao)}</td>
+          <td>${fmt(s.confirmado_em)}</td>
+          <td><div class="etapas-grid">${etapas.map(badgeEtapa).join(' ')||'—'}</div></td>
           <td>
             <div class="actions">
-              <button class="btn btn-outline btn-sm" onclick="toggleEdit('sessao', ${s.id})">✏️ Editar</button>
-              <div class="etapas-grid" style="margin-top:4px">${botoesEtapas}</div>
+              <button class="btn btn-outline" onclick="toggleEdit('sessao',${s.id})">✏️</button>
+              <div class="etapas-grid">${botoesEtapas}</div>
+              <button class="btn btn-danger" onclick="deletar('sessao',${s.id},'${n}')">🗑️</button>
             </div>
           </td>
         </tr>
         <tr class="edit-row" id="edit-sessao-${s.id}">
           <td colspan="7">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:500px">
-              <div><label>Nome</label><input id="es-nome-${s.id}" value="${s.nome || ''}"/></div>
-              <div><label>Telefone</label><input id="es-tel-${s.id}" value="${s.telefone || ''}"/></div>
-              <div><label>Data Sessão</label><input id="es-data-${s.id}" type="date" value="${s.data_sessao ? s.data_sessao.split('T')[0] : ''}"/></div>
+            <div class="edit-fields">
+              <div><label>Nome</label><input id="es-nome-${s.id}" value="${n}"/></div>
+              <div><label>Telefone</label><input id="es-tel-${s.id}" value="${tel}"/></div>
+              <div><label>Data Sessão</label><input type="date" id="es-data-${s.id}" value="${s.data_sessao?s.data_sessao.split('T')[0]:''}"/></div>
             </div>
-            <div style="margin-top:10px;display:flex;gap:8px">
-              <button class="btn btn-gold btn-sm" onclick="salvarSessao(${s.id})">💾 Salvar</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleEdit('sessao', ${s.id})">Cancelar</button>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-gold" onclick="salvarSessao(${s.id})">💾 Salvar</button>
+              <button class="btn btn-outline" onclick="toggleEdit('sessao',${s.id})">Cancelar</button>
             </div>
           </td>
-        </tr>
-      `;
+        </tr>`;
+    }).join('');
+  }
+
+  function renderCancelados({ cancelados, mensagens }) {
+    const tbody = document.getElementById('bodyCancelados');
+    if (!cancelados.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum cancelado</td></tr>'; return; }
+    tbody.innerHTML = cancelados.map(c => {
+      const n = esc(c.nome||''); const tel = c.telefone||'';
+      return `
+        <tr>
+          <td>${c.id}</td>
+          <td><strong>${n}</strong></td>
+          <td>${tel}</td>
+          <td>${c.email||'—'}</td>
+          <td>${fmt(c.cancelado_em)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-gold" onclick="enviarManual('cancelados',${c.id},'${n}','${tel}','convite')">📤 Convite</button>
+              <button class="btn btn-outline" onclick="enviarManual('cancelados',${c.id},'${n}','${tel}','reconvite')">🔁 Reconvite</button>
+              <button class="btn btn-outline" onclick="enviarManual('cancelados',${c.id},'${n}','${tel}','link_meet')">🔗 Meet</button>
+            </div>
+          </td>
+        </tr>`;
     }).join('');
   }
 
   function renderMensagens({ mensagens }) {
     const tbody = document.getElementById('bodyMensagens');
-    if (!mensagens.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma mensagem enviada ainda</td></tr>'; return; }
+    if (!mensagens.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhuma mensagem</td></tr>'; return; }
     tbody.innerHTML = mensagens.map(m => `
       <tr>
-        <td>${m.id}</td>
-        <td>#${m.referencia_id}</td>
+        <td>${m.id}</td><td>#${m.referencia_id}</td>
         <td><span class="badge badge-gray">${m.tabela_origem}</span></td>
         <td>${badgeEtapa(m.etapa)}</td>
-        <td>${formatarData(m.enviado_em)}</td>
-      </tr>
-    `).join('');
+        <td>${fmt(m.enviado_em)}</td>
+      </tr>`).join('');
   }
+
+  function esc(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
   function toggleEdit(tipo, id) {
     const row = document.getElementById(`edit-${tipo}-${id}`);
@@ -466,46 +433,104 @@
   }
 
   async function salvarLead(id) {
-    const campos = {
-      nome: document.getElementById(`el-nome-${id}`).value,
-      telefone: document.getElementById(`el-tel-${id}`).value,
-      email: document.getElementById(`el-email-${id}`).value,
-    };
+    const campos = { nome: document.getElementById(`el-nome-${id}`).value, telefone: document.getElementById(`el-tel-${id}`).value, email: document.getElementById(`el-email-${id}`).value };
     try {
-      await fetch(`/admin/lead/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campos) });
-      showToast('✅ Lead atualizado!');
-      carregarDados();
-    } catch (err) { showToast('Erro ao salvar', true); }
+      await fetch(`/admin/lead/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(campos) });
+      showToast('✅ Lead atualizado!'); carregarDados();
+    } catch { showToast('Erro ao salvar', true); }
   }
 
   async function salvarSessao(id) {
-    const campos = {
-      nome: document.getElementById(`es-nome-${id}`).value,
-      telefone: document.getElementById(`es-tel-${id}`).value,
-      data_sessao: document.getElementById(`es-data-${id}`).value,
-    };
+    const campos = { nome: document.getElementById(`es-nome-${id}`).value, telefone: document.getElementById(`es-tel-${id}`).value, data_sessao: document.getElementById(`es-data-${id}`).value };
     try {
-      await fetch(`/admin/sessao/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campos) });
-      showToast('✅ Sessão atualizada!');
-      carregarDados();
-    } catch (err) { showToast('Erro ao salvar', true); }
+      await fetch(`/admin/sessao/${id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(campos) });
+      showToast('✅ Sessão atualizada!'); carregarDados();
+    } catch { showToast('Erro ao salvar', true); }
+  }
+
+  async function deletar(tipo, id, nome) {
+    if (!confirm(`Deletar ${nome} permanentemente?`)) return;
+    try {
+      await fetch(`/admin/${tipo}/${id}`, { method: 'DELETE' });
+      showToast(`🗑️ ${nome} deletado`); carregarDados();
+    } catch { showToast('Erro ao deletar', true); }
+  }
+
+  async function cancelar(id, nome) {
+    if (!confirm(`Cancelar agendamento de ${nome}?\nEle será movido para a aba Cancelados.`)) return;
+    try {
+      await fetch(`/admin/cancelar/${id}`, { method: 'POST' });
+      showToast(`❌ ${nome} cancelado`); carregarDados();
+    } catch { showToast('Erro ao cancelar', true); }
+  }
+
+  async function mover(id) {
+    const lead = dadosGlobais.leads.find(l => l.id === id);
+    if (!lead) return;
+    if (!confirm(`Mover ${lead.nome} para confirmados?\nData: próximo sábado às 14h`)) return;
+    try {
+      await fetch(`/admin/mover/${id}`, { method: 'POST' });
+      showToast(`➡️ ${lead.nome} movido para confirmados!`); carregarDados();
+    } catch { showToast('Erro ao mover', true); }
   }
 
   async function enviarManual(tipo, id, nome, telefone, etapa) {
-    if (!confirm(`Enviar "${etapa}" para ${nome}?`)) return;
+    if (!confirm(`Enviar "${etapa.replace(/_/g,' ')}" para ${nome}?`)) return;
     try {
       const resp = await fetch('/admin/enviar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ tipo, id, nome, telefone, etapa })
       });
       const data = await resp.json();
-      if (data.success) { showToast(`✅ "${etapa}" enviado para ${nome}!`); carregarDados(); }
-      else showToast(data.error || 'Erro ao enviar', true);
-    } catch (err) { showToast('Erro de conexão', true); }
+      if (data.success) { showToast(`✅ Enviado para ${nome}!`); carregarDados(); }
+      else showToast(data.error || 'Erro', true);
+    } catch { showToast('Erro de conexão', true); }
   }
 
-  // Carrega ao iniciar e a cada 60s
+  // MODAL ADICIONAR
+  function abrirModalAdicionar(tipo) {
+    modalTipo = tipo;
+    document.getElementById('modalTitulo').textContent = tipo === 'lead' ? '➕ Adicionar Lead' : '➕ Adicionar Confirmado';
+    const campos = tipo === 'lead'
+      ? `<div class="field"><label>Nome *</label><input id="m-nome" placeholder="Nome completo"/></div>
+         <div class="field"><label>Telefone *</label><input id="m-tel" placeholder="11999999999"/></div>
+         <div class="field"><label>Email</label><input id="m-email" placeholder="email@exemplo.com"/></div>`
+      : `<div class="field"><label>Nome *</label><input id="m-nome" placeholder="Nome completo"/></div>
+         <div class="field"><label>Telefone *</label><input id="m-tel" placeholder="11999999999"/></div>
+         <div class="field"><label>Data da Sessão *</label><input id="m-data" type="date"/></div>`;
+    document.getElementById('modalCampos').innerHTML = campos;
+    document.getElementById('modalOverlay').classList.add('show');
+  }
+
+  function fecharModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+  }
+
+  async function confirmarAdicionar() {
+    const nome = document.getElementById('m-nome').value.trim();
+    const tel = document.getElementById('m-tel').value.trim();
+    if (!nome || !tel) { showToast('Nome e telefone são obrigatórios', true); return; }
+
+    try {
+      if (modalTipo === 'lead') {
+        const email = document.getElementById('m-email').value.trim();
+        await fetch('/admin/adicionar-lead', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nome, telefone: tel, email }) });
+        showToast('✅ Lead adicionado!');
+      } else {
+        const data = document.getElementById('m-data').value;
+        if (!data) { showToast('Data é obrigatória', true); return; }
+        await fetch('/admin/adicionar-sessao', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ nome, telefone: tel, data_sessao: data }) });
+        showToast('✅ Confirmado adicionado!');
+      }
+      fecharModal();
+      carregarDados();
+    } catch { showToast('Erro ao adicionar', true); }
+  }
+
+  document.getElementById('modalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) fecharModal();
+  });
+
   carregarDados();
   setInterval(carregarDados, 60000);
 </script>
