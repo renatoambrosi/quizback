@@ -25,8 +25,8 @@ module.exports = {
             `Olá, ${nome}! 👋\n\nAinda dá tempo de garantir sua vaga na Sessão de Diagnóstico do Teste de Prosperidade!\n\nAs vagas são limitadas e eu adoraria te ver por lá. 💛\n\n👉 Clique aqui para confirmar:\n${link}`,
 
         convite: (nome, link) =>
-            `Olá, ${nome}! 🌟\n\nVi que você acessou seu resultado do Teste de Prosperidade. Gostaria de te convidar para uma Sessão de Diagnóstico ao vivo e gratuita onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para saber mais e agendar:\n${link}`,
-        
+            `Olá, ${nome}! 🌟\n\n*Você gostou do seu resultado do Teste de Prosperidade?* Gostaria de te convidar para uma Sessão de Diagnóstico ao vivo e gratuita onde vamos aprofundar o que o teste revelou sobre você.\n\n👉 Clique aqui para saber mais e agendar:\n${link}`,
+
         // 4. Mensagem de quarta-feira — aquecimento
         quarta: (nome) =>
             `Olá, ${nome}! ✨\n\nEstou te esperando na Sessão de Diagnóstico esse sábado às 14h!\n\nFui pensando em você essa semana e tenho certeza que o que vamos trabalhar juntos vai abrir portas que você nem imagina ainda. 🚪💛\n\nAté sábado! 🌟\n— Suellen Seragi`,
