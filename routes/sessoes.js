@@ -59,18 +59,7 @@ router.post('/agendar-sessao', async (req, res) => {
             console.error('❌ Erro confirmação WhatsApp:', err.message);
         }
 
-        // 3. Link do Meet — 5 minutos depois
-        setTimeout(async () => {
-            try {
-                await enviarWhatsApp(numeroFinal, config.mensagens.linkMeet(nome, config.meetLink));
-                await registrarMensagem(sessaoId, 'sessoes_agendadas', 'link_meet');
-                console.log(`✅ Link Meet enviado para ${nome}`);
-            } catch (err) {
-                console.error('❌ Erro link Meet WhatsApp:', err.message);
-            }
-        }, 5 * 60 * 1000); // 5 minutos
-
-        // 4. Pushover
+        // 3. Pushover
         try {
             await axios.post('https://api.pushover.net/1/messages.json', {
                 token: 'axfum4x76e38hzuuxjrkb3sh2febbw',
