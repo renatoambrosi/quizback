@@ -29,7 +29,7 @@ module.exports = {
 
         // 4. Mensagem de quarta-feira — aquecimento
         quarta: (nome) =>
-            `Olá, ${nome}! ✨\n\nEstou te esperando na Sessão de Diagnóstico esse sábado às 14h!\n\nFui pensando em você essa semana e tenho certeza que o que vamos trabalhar juntos vai abrir portas que você nem imagina ainda. 🚪💛\n\nAté sábado! 🌟\n— Suellen Seragi`,
+            `Olá, ${nome}! ✨\n\nEstou te esperando na Sessão de Diagnóstico, nesse sábado às 14h pra falarmos como nossa mente vence as travas para prosperar!\n\nO que vou falar para vocês na nossa reunião, abrirá uma janela de Deus na sua vida, que você nem imagina ainda. 🪟☀️\n\nAté lá!⚡\n— Suellen Seragi`,
 
         // 5. Mensagem de sexta-feira — "é amanhã"
         sexta: (nome) =>
