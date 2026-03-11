@@ -126,7 +126,7 @@ router.post('/admin/enviar', autenticar, async (req, res) => {
 
         let mensagem = '';
         switch (etapa) {
-            case 'convite':    mensagem = config.mensagens.reconvite(nome, link); break;
+            case 'convite':    mensagem = config.mensagens.convite(nome, link); break;
             case 'reconvite':  mensagem = config.mensagens.reconvite(nome, link); break;
             case 'link_meet':  mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
             case 'quarta':     mensagem = config.mensagens.quarta(nome); break;
