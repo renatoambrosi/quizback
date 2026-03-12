@@ -9,7 +9,7 @@ const {
     deletarLead, deletarSessao,
     cancelarLead, moverParaConfirmados,
     adicionarLead, adicionarSessao,
-    registrarMensagem, jaEnviou
+    registrarMensagem, jaEnviou, reativarCancelado
 } = require('../db');
 const { enviarWhatsApp } = require('../scheduler');
 
@@ -126,18 +126,24 @@ router.post('/admin/enviar', autenticar, async (req, res) => {
 
         let mensagem = '';
         switch (etapa) {
-            case 'convite':    mensagem = config.mensagens.convite(nome, link); break;
+            case 'convite':    mensagem = config.mensagens.reconvite(nome, link); break;
             case 'reconvite':  mensagem = config.mensagens.reconvite(nome, link); break;
             case 'link_meet':  mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
             case 'quarta':     mensagem = config.mensagens.quarta(nome); break;
             case 'sexta':      mensagem = config.mensagens.sexta(nome); break;
             case 'sabado_1h':  mensagem = config.mensagens.sabadoUmaHora(nome, config.meetLink); break;
-            case 'sabado_15min': mensagem = config.mensagens.sabadoQuinzeMin(nome, config.meetLink); break;
             default: return res.status(400).json({ error: 'Etapa inválida' });
         }
 
         await enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem);
         await registrarMensagem(id, tipo, etapa);
+
+        // Se convite enviado para cancelado, move de volta para leads
+        if (tipo === 'cancelados' && etapa === 'convite') {
+            await reativarCancelado(id);
+            console.log(`♻️ Cancelado ${nome} reativado como lead após convite manual`);
+        }
+
         console.log(`✅ Envio manual: ${etapa} para ${nome}`);
         res.json({ success: true, etapa, nome });
     } catch (err) {
