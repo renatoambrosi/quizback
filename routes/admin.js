@@ -12,6 +12,7 @@ const {
     registrarMensagem, jaEnviou, reativarCancelado
 } = require('../db');
 const { enviarWhatsApp } = require('../scheduler');
+const { registrarCliente } = require('../monitor-events');
 
 function autenticar(req, res, next) {
     const auth = req.headers['authorization'];
@@ -150,6 +151,23 @@ router.post('/admin/enviar', autenticar, async (req, res) => {
         console.error('❌ Erro envio manual:', err.message);
         res.status(500).json({ error: err.message });
     }
+});
+
+// ── MONITOR SSE ──
+router.get('/admin/monitor/stream', autenticar, (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Heartbeat a cada 20s para manter conexão viva
+    const hb = setInterval(() => {
+        try { res.write(': heartbeat\n\n'); } catch (_) { clearInterval(hb); }
+    }, 20000);
+
+    res.on('close', () => clearInterval(hb));
+    registrarCliente(res);
 });
 
 module.exports = router;
