@@ -346,6 +346,30 @@ async function adicionarSessao(nome, telefone, dataSessao) {
     }
 }
 
+async function reativarCancelado(id) {
+    try {
+        const cancelado = await pool.query(`SELECT * FROM cancelados WHERE id = $1`, [id]);
+        if (!cancelado.rows.length) throw new Error('Cancelado não encontrado');
+        const c = cancelado.rows[0];
+
+        // Insere em whatsapp_agendados com enviado=TRUE (convite já foi enviado manualmente)
+        // e enviar_em para o próximo ciclo de reconvite (48h a partir de agora)
+        const enviarEm = calcularEnviarEm();
+        const result = await pool.query(
+            `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em, enviado, criado_em)
+             VALUES ($1, $2, $3, $4, $5, TRUE, $6) RETURNING id`,
+            [c.uid || `reativado-${Date.now()}`, c.nome, c.telefone, c.email, enviarEm, c.criado_em || new Date()]
+        );
+
+        await pool.query(`DELETE FROM cancelados WHERE id = $1`, [id]);
+        console.log(`♻️ Cancelado ${c.nome} reativado como lead`);
+        return result.rows[0].id;
+    } catch (error) {
+        console.error('❌ Erro ao reativar cancelado:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     initDb,
     agendarEnvio,
@@ -367,5 +391,6 @@ module.exports = {
     deletarSessao,
     moverParaConfirmados,
     adicionarLead,
-    adicionarSessao
+    adicionarSessao,
+    reativarCancelado
 };
