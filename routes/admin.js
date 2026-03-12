@@ -1,18 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const path = require('path');
 const config = require('../config');
 const {
-    listarLeads, listarSessoes, listarMensagensEnviadas, listarCancelados,
+    listarLeads, listarSessoes, listarMensagensEnviadas, listarCancelados, listarPassados,
     atualizarLead, atualizarSessao,
-    deletarLead, deletarSessao,
+    deletarLead, deletarSessao, deletarPassado,
     cancelarLead, moverParaConfirmados,
+    reativarCancelado, reativarPassado,
     adicionarLead, adicionarSessao,
-    registrarMensagem, jaEnviou, reativarCancelado
+    registrarMensagem
 } = require('../db');
 const { enviarWhatsApp } = require('../scheduler');
-const { registrarCliente } = require('../monitor-events');
+const { enfileirar, tamanhoFila } = require('../send-queue');
+const { emitir, EVENTOS, registrarCliente } = require('../monitor-events');
 
 function autenticar(req, res, next) {
     const auth = req.headers['authorization'];
@@ -32,10 +33,10 @@ router.get('/admin', autenticar, (req, res) => {
 
 router.get('/admin/dados', autenticar, async (req, res) => {
     try {
-        const [leads, sessoes, mensagens, cancelados] = await Promise.all([
-            listarLeads(), listarSessoes(), listarMensagensEnviadas(), listarCancelados()
+        const [leads, sessoes, mensagens, cancelados, passados] = await Promise.all([
+            listarLeads(), listarSessoes(), listarMensagensEnviadas(), listarCancelados(), listarPassados()
         ]);
-        res.json({ leads, sessoes, mensagens, cancelados });
+        res.json({ leads, sessoes, mensagens, cancelados, passados });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -77,6 +78,15 @@ router.delete('/admin/sessao/:id', autenticar, async (req, res) => {
     }
 });
 
+router.delete('/admin/passado/:id', autenticar, async (req, res) => {
+    try {
+        await deletarPassado(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/admin/cancelar/:id', autenticar, async (req, res) => {
     try {
         await cancelarLead(req.params.id);
@@ -90,6 +100,26 @@ router.post('/admin/mover/:id', autenticar, async (req, res) => {
     try {
         const sessaoId = await moverParaConfirmados(req.params.id);
         res.json({ success: true, sessaoId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Reativar cancelado → semana vigente (convite já feito, enviado=TRUE)
+router.post('/admin/reativar-cancelado/:id', autenticar, async (req, res) => {
+    try {
+        await reativarCancelado(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Reativar passado → semana vigente (convite já feito, enviado=TRUE)
+router.post('/admin/reativar-passado/:id', autenticar, async (req, res) => {
+    try {
+        await reativarPassado(req.params.id);
+        res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -117,6 +147,7 @@ router.post('/admin/adicionar-sessao', autenticar, async (req, res) => {
     }
 });
 
+// Envio manual — passa pela fila (exceto resultado do teste que usa whatsapp.js diretamente)
 router.post('/admin/enviar', autenticar, async (req, res) => {
     try {
         const { tipo, id, nome, telefone, etapa } = req.body;
@@ -127,46 +158,43 @@ router.post('/admin/enviar', autenticar, async (req, res) => {
 
         let mensagem = '';
         switch (etapa) {
-            case 'convite':    mensagem = config.mensagens.reconvite(nome, link); break;
-            case 'reconvite':  mensagem = config.mensagens.reconvite(nome, link); break;
-            case 'link_meet':  mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
-            case 'quarta':     mensagem = config.mensagens.quarta(nome); break;
-            case 'sexta':      mensagem = config.mensagens.sexta(nome); break;
-            case 'sabado_1h':  mensagem = config.mensagens.sabadoUmaHora(nome, config.meetLink); break;
+            case 'convite':   mensagem = config.mensagens.reconvite(nome, link); break;
+            case 'link_meet': mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
+            case 'confirmacao': mensagem = config.mensagens.confirmacao(nome, 'próximo sábado'); break;
+            case 'sabado_1h': mensagem = config.mensagens.sabadoUmaHora(nome, config.meetLink); break;
             default: return res.status(400).json({ error: 'Etapa inválida' });
         }
 
-        await enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem);
-        await registrarMensagem(id, tipo, etapa);
+        const info = enfileirar(async () => {
+            await enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem);
+            await registrarMensagem(id, tipo, etapa);
+            console.log(`✅ Envio manual: ${etapa} para ${nome}`);
 
-        // Se convite enviado para cancelado, move de volta para leads
-        if (tipo === 'cancelados' && etapa === 'convite') {
-            await reativarCancelado(id);
-            console.log(`♻️ Cancelado ${nome} reativado como lead após convite manual`);
-        }
+            // Se convite para cancelado → reativa automaticamente
+            if (etapa === 'convite' && tipo === 'cancelados') {
+                const { reativarCancelado } = require('../db');
+                await reativarCancelado(id).catch(e => console.error('Erro reativar cancelado:', e.message));
+            }
+            // Se convite para passado → reativa automaticamente
+            if (etapa === 'convite' && tipo === 'passados') {
+                const { reativarPassado } = require('../db');
+                await reativarPassado(id).catch(e => console.error('Erro reativar passado:', e.message));
+            }
+        }, etapa, nome, telefone);
 
-        console.log(`✅ Envio manual: ${etapa} para ${nome}`);
-        res.json({ success: true, etapa, nome });
+        res.json({ success: true, etapa, nome, posicao: info.posicao, imediato: info.imediato });
     } catch (err) {
         console.error('❌ Erro envio manual:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// ── MONITOR SSE ──
+// SSE — monitor em tempo real
 router.get('/admin/monitor/stream', autenticar, (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
-
-    // Heartbeat a cada 20s para manter conexão viva
-    const hb = setInterval(() => {
-        try { res.write(': heartbeat\n\n'); } catch (_) { clearInterval(hb); }
-    }, 20000);
-
-    res.on('close', () => clearInterval(hb));
     registrarCliente(res);
 });
 
