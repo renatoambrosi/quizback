@@ -34,6 +34,68 @@
     .tab.active { color: #9b8732; border-bottom-color: #9b8732; }
     .tab:hover { color: #9b8732; }
 
+    /* ── MONITOR ── */
+    .monitor-grid {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 16px;
+    }
+    @media (max-width: 900px) { .monitor-grid { grid-template-columns: 1fr; } }
+
+    .monitor-log {
+      background: #0d1117; border-radius: 10px;
+      padding: 16px; height: 520px; overflow-y: auto;
+      font-family: 'Courier New', monospace; font-size: 0.78rem;
+      border: 1px solid #30363d;
+    }
+    .monitor-log::-webkit-scrollbar { width: 6px; }
+    .monitor-log::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+    .log-line {
+      display: flex; gap: 10px; padding: 3px 0;
+      border-bottom: 1px solid #161b22; align-items: flex-start;
+    }
+    .log-ts { color: #484f58; white-space: nowrap; flex-shrink: 0; }
+    .log-msg { color: #e6edf3; flex: 1; word-break: break-word; }
+    .log-msg.sucesso { color: #3fb950; }
+    .log-msg.erro    { color: #f85149; }
+    .log-msg.inicio  { color: #58a6ff; }
+    .log-msg.fim     { color: #bc8cff; }
+    .log-msg.aguard  { color: #d29922; }
+    .log-msg.fila    { color: #79c0ff; }
+
+    .monitor-sidebar { display: flex; flex-direction: column; gap: 12px; }
+
+    .status-card {
+      background: white; border: 1px solid #e0d9bc;
+      border-radius: 10px; padding: 14px 16px;
+    }
+    .status-card h4 { font-size: 0.78rem; font-weight: 700; color: #9b8732; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .next-jobs { display: flex; flex-direction: column; gap: 6px; }
+    .next-job {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 10px; border-radius: 6px; background: #fafaf7;
+      border: 1px solid #e0d9bc; font-size: 0.78rem;
+    }
+    .next-job .job-name { font-weight: 700; color: #504b3a; }
+    .next-job .job-time { color: #9b8732; font-weight: 600; }
+
+    .conn-dot {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; margin-right: 6px;
+      background: #484f58;
+    }
+    .conn-dot.conectado { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+    .conn-dot.erro { background: #f85149; }
+
+    .monitor-controls {
+      display: flex; gap: 8px; margin-bottom: 12px; align-items: center;
+    }
+    .btn-clear { background: #21262d; color: #8b949e; border: 1px solid #30363d; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 0.75rem; font-family: 'Inter', sans-serif; }
+    .btn-clear:hover { color: #e6edf3; }
+    .monitor-status-txt { font-size: 0.75rem; color: #7a7464; }
+
     .content { padding: 24px; }
     .panel { display: none; }
     .panel.active { display: block; }
@@ -149,6 +211,7 @@
   <button class="tab" onclick="showTab('sessoes', this)">✅ Confirmados</button>
   <button class="tab" onclick="showTab('cancelados', this)">❌ Cancelados</button>
   <button class="tab" onclick="showTab('mensagens', this)">📨 Mensagens</button>
+  <button class="tab" onclick="showTab('monitor', this)">🖥️ Monitor</button>
 </div>
 
 <div class="content">
@@ -226,6 +289,49 @@
           </tr></thead>
           <tbody id="bodyMensagens"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
         </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- MONITOR -->
+  <div id="panel-monitor" class="panel">
+    <div class="monitor-controls">
+      <span><span class="conn-dot" id="connDot"></span><span id="connTxt" class="monitor-status-txt">Desconectado</span></span>
+      <button class="btn-clear" onclick="limparLog()">🗑 Limpar log</button>
+    </div>
+    <div class="monitor-grid">
+      <div>
+        <div class="monitor-log" id="monitorLog">
+          <div class="log-line"><span class="log-ts">--:--:--</span><span class="log-msg">Aguardando conexão...</span></div>
+        </div>
+      </div>
+      <div class="monitor-sidebar">
+        <div class="status-card">
+          <h4>⏰ Próximos disparos</h4>
+          <div class="next-jobs">
+            <div class="next-job"><span class="job-name">Convites/Reconvites</span><span class="job-time">13h40 Seg–Sáb</span></div>
+            <div class="next-job"><span class="job-name">Quarta aquecimento</span><span class="job-time">10h00 Qua</span></div>
+            <div class="next-job"><span class="job-name">Sexta lembrete</span><span class="job-time">10h00 Sex</span></div>
+            <div class="next-job"><span class="job-name">Sábado 1h antes</span><span class="job-time">13h00 Sáb</span></div>
+          </div>
+        </div>
+        <div class="status-card">
+          <h4>📊 Fila atual</h4>
+          <div style="font-size:0.82rem;color:#504b3a;line-height:1.9">
+            <div>Convites pendentes: <strong id="mqPendentes">—</strong></div>
+            <div>Reconvites pendentes: <strong id="mqReconvites">—</strong></div>
+            <div>Confirmados sábado: <strong id="mqConfirmados">—</strong></div>
+          </div>
+        </div>
+        <div class="status-card">
+          <h4>📈 Sessão atual</h4>
+          <div style="font-size:0.82rem;color:#504b3a;line-height:1.9">
+            <div>✅ Enviados: <strong id="msEnviados" style="color:#2e7d32">0</strong></div>
+            <div>❌ Erros: <strong id="msErros" style="color:#c62828">0</strong></div>
+            <div>⏳ Job ativo: <strong id="msJob">—</strong></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -530,6 +636,139 @@
   document.getElementById('modalOverlay').addEventListener('click', function(e) {
     if (e.target === this) fecharModal();
   });
+
+  // ── MONITOR SSE ──
+  let sseConn = null;
+  let msEnviados = 0, msErros = 0;
+
+  function tsAgora() {
+    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function addLog(msg, classe = '') {
+    const log = document.getElementById('monitorLog');
+    const linha = document.createElement('div');
+    linha.className = 'log-line';
+    linha.innerHTML = `<span class="log-ts">${tsAgora()}</span><span class="log-msg ${classe}">${msg}</span>`;
+    log.appendChild(linha);
+    log.scrollTop = log.scrollHeight;
+    // Limitar a 500 linhas
+    while (log.children.length > 500) log.removeChild(log.firstChild);
+  }
+
+  function limparLog() {
+    document.getElementById('monitorLog').innerHTML = '';
+    msEnviados = 0; msErros = 0;
+    document.getElementById('msEnviados').textContent = '0';
+    document.getElementById('msErros').textContent = '0';
+    document.getElementById('msJob').textContent = '—';
+  }
+
+  function setConexao(status) {
+    const dot = document.getElementById('connDot');
+    const txt = document.getElementById('connTxt');
+    if (status === 'ok') {
+      dot.className = 'conn-dot conectado';
+      txt.textContent = 'Conectado — recebendo eventos';
+    } else if (status === 'erro') {
+      dot.className = 'conn-dot erro';
+      txt.textContent = 'Erro de conexão';
+    } else {
+      dot.className = 'conn-dot';
+      txt.textContent = 'Desconectado';
+    }
+  }
+
+  function conectarMonitor() {
+    if (sseConn) { sseConn.close(); sseConn = null; }
+    setConexao('ok');
+    addLog('🔌 Conectando ao stream de eventos...', 'inicio');
+
+    sseConn = new EventSource('/admin/monitor/stream');
+
+    sseConn.onmessage = (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        const job = d.job ? `[${d.job.replace(/_/g,' ')}]` : '';
+
+        switch (d.tipo) {
+          case 'scheduler_inicio':
+            msEnviados = 0; msErros = 0;
+            document.getElementById('msEnviados').textContent = '0';
+            document.getElementById('msErros').textContent = '0';
+            document.getElementById('msJob').textContent = d.job || '—';
+            addLog(`🚀 ${job} Iniciando — ${d.descricao || ''} ${d.total !== undefined ? `(${d.total} na fila)` : ''}`, 'inicio');
+            break;
+          case 'scheduler_fim':
+            document.getElementById('msJob').textContent = '—';
+            addLog(`✔ ${job} Concluído — ${msEnviados} enviados, ${msErros} erros`, 'fim');
+            break;
+          case 'fila_atualizada':
+            addLog(`📋 ${job} Fila: ${d.total} item(s)`, 'fila');
+            if (d.job === 'convite') document.getElementById('mqPendentes').textContent = d.total;
+            if (d.job === 'reconvite') document.getElementById('mqReconvites').textContent = d.total;
+            break;
+          case 'envio_iniciando':
+            addLog(`📤 ${job} Enviando para ${d.nome} (${d.telefone})...`);
+            break;
+          case 'envio_sucesso':
+            msEnviados++;
+            document.getElementById('msEnviados').textContent = msEnviados;
+            addLog(`✅ ${job} Entregue → ${d.nome}`, 'sucesso');
+            break;
+          case 'envio_erro':
+            msErros++;
+            document.getElementById('msErros').textContent = msErros;
+            addLog(`❌ ${job} Falhou → ${d.nome}: ${d.erro || ''}`, 'erro');
+            break;
+          case 'envio_aguardando':
+            addLog(`⏳ ${job} Aguardando ${d.segundos}s antes do próximo...`, 'aguard');
+            break;
+        }
+      } catch (_) {}
+    };
+
+    sseConn.onerror = () => {
+      setConexao('erro');
+      addLog('⚠️ Conexão perdida. Reconectando em 5s...', 'erro');
+      sseConn.close();
+      setTimeout(() => {
+        if (document.getElementById('panel-monitor').classList.contains('active')) {
+          conectarMonitor();
+        }
+      }, 5000);
+    };
+  }
+
+  function desconectarMonitor() {
+    if (sseConn) { sseConn.close(); sseConn = null; }
+    setConexao('desconectado');
+  }
+
+  // Conectar/desconectar ao trocar de aba
+  const _showTabOrig = showTab;
+  function showTab(tab, el) {
+    _showTabOrig(tab, el);
+    if (tab === 'monitor') {
+      conectarMonitor();
+      atualizarFilaMonitor();
+    } else {
+      desconectarMonitor();
+    }
+  }
+
+  async function atualizarFilaMonitor() {
+    try {
+      const resp = await fetch('/admin/dados');
+      const data = await resp.json();
+      const pendentes = data.leads.filter(l => !l.enviado).length;
+      const reconvites = data.leads.filter(l => l.enviado).length;
+      const confirmados = data.sessoes.length;
+      document.getElementById('mqPendentes').textContent = pendentes;
+      document.getElementById('mqReconvites').textContent = reconvites;
+      document.getElementById('mqConfirmados').textContent = confirmados;
+    } catch (_) {}
+  }
 
   carregarDados();
   setInterval(carregarDados, 60000);
