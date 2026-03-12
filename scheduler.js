@@ -10,6 +10,12 @@ const {
     jaEnviou
 } = require('./db');
 
+const DELAY_ENTRE_ENVIOS = 60 * 1000; // 1 minuto
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem) {
     const instanceEncoded = encodeURIComponent(instance);
     await axios.post(
@@ -41,6 +47,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             } catch (err) {
                 console.error(`❌ Erro convite ${r.nome}:`, err.message);
             }
+            await sleep(DELAY_ENTRE_ENVIOS);
         }
 
         // Reconvites (48h sem confirmação)
@@ -57,6 +64,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             } catch (err) {
                 console.error(`❌ Erro reconvite ${r.nome}:`, err.message);
             }
+            await sleep(DELAY_ENTRE_ENVIOS);
         }
     });
 
@@ -73,6 +81,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             } catch (err) {
                 console.error(`❌ Erro quarta ${r.nome}:`, err.message);
             }
+            await sleep(DELAY_ENTRE_ENVIOS);
         }
     });
 
@@ -89,6 +98,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             } catch (err) {
                 console.error(`❌ Erro sexta ${r.nome}:`, err.message);
             }
+            await sleep(DELAY_ENTRE_ENVIOS);
         }
     });
 
@@ -105,24 +115,11 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             } catch (err) {
                 console.error(`❌ Erro sábado 1h ${r.nome}:`, err.message);
             }
+            await sleep(DELAY_ENTRE_ENVIOS);
         }
     });
 
-    // ── 5. SÁBADO 13h45 — 15 minutos antes ──
-    cron.schedule(config.horarios.sabadoQuinzeMin, async () => {
-        console.log('⏰ Sábado 13h45 — enviando "15 minutos"...');
-        const confirmados = await buscarConfirmadosParaSabado();
-        for (const r of confirmados) {
-            try {
-                if (await jaEnviou(r.id, 'sessoes_agendadas', 'sabado_15min')) continue;
-                await enviarWhatsApp(evolutionUrl, apiKey, instance, r.telefone, config.mensagens.sabadoQuinzeMin(r.nome, config.meetLink));
-                await registrarMensagem(r.id, 'sessoes_agendadas', 'sabado_15min');
-                console.log(`✅ Sábado 15min enviado para ${r.nome}`);
-            } catch (err) {
-                console.error(`❌ Erro sábado 15min ${r.nome}:`, err.message);
-            }
-        }
-    });
+
 }
 
 module.exports = { iniciarScheduler, enviarWhatsApp };
