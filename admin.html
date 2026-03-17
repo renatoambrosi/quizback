@@ -145,6 +145,56 @@
     }
     .toast.show { opacity: 1; }
     .toast.error { background: #c62828; }
+
+    /* EXPEDIÇÃO */
+    .fila-status {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 20px; border-bottom: 1px solid #e0d9bc;
+      font-size: 0.78rem; color: #7a7464;
+    }
+    .fila-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ccc; transition: background 300ms; flex-shrink: 0;
+    }
+    .fila-dot.conectado { background: #2e7d32; }
+    .fila-dot.enviando { background: #f57f17; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .fila-aguardando {
+      padding: 8px 20px; background: #fff8e1;
+      border-bottom: 1px solid #e0d9bc;
+      font-size: 0.78rem; color: #f57f17;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .fila-vazia { text-align: center; padding: 40px; color: #9a9480; font-size: 0.88rem; }
+    .fila-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 20px; border-bottom: 1px solid #f0ece0;
+      transition: background 150ms;
+    }
+    .fila-item:last-child { border-bottom: none; }
+    .fila-item:hover { background: #fafaf7; }
+    .fila-pos {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #f5f0e0; border: 1px solid #e0d9bc;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; color: #7a7464; flex-shrink: 0;
+    }
+    .fila-pos.imediato { background: #fff8e1; border-color: #f57f17; color: #f57f17; }
+    .fila-info { flex: 1; min-width: 0; }
+    .fila-nome { font-size: 0.82rem; font-weight: 600; color: #2d2a1e; }
+    .fila-preview { font-size: 0.72rem; color: #9a9480; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    .fila-meta { display: flex; gap: 6px; align-items: center; flex-shrink: 0; font-size: 0.72rem; color: #9a9480; }
+    .hist-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 20px; border-bottom: 1px solid #f0ece0; font-size: 0.78rem;
+    }
+    .hist-item:last-child { border-bottom: none; }
+    .hist-ok { color: #2e7d32; font-size: 0.7rem; font-weight: 700; }
+    .hist-err { color: #c62828; font-size: 0.7rem; font-weight: 700; }
+    .hist-info { flex: 1; min-width: 0; }
+    .hist-nome { font-weight: 600; color: #2d2a1e; }
+    .hist-preview { color: #9a9480; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.72rem; }
+    .hist-ts { font-size: 0.68rem; color: #9a9480; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -160,6 +210,7 @@
   <button class="tab" onclick="showTab('cancelados', this)">❌ Cancelados</button>
   <button class="tab" onclick="showTab('passados', this)">📦 Passados</button>
   <button class="tab" onclick="showTab('mensagens', this)">📨 Mensagens</button>
+  <button class="tab" onclick="abrirExpedicao(this)">🚚 Expedição <span id="fila-badge" style="display:none;background:#9b8732;color:white;border-radius:10px;padding:1px 6px;font-size:0.65rem;margin-left:4px">0</span></button>
 </div>
 
 <div class="content">
@@ -246,9 +297,36 @@
       </div>
     </div>
   </div>
-</div>
+  <!-- EXPEDIÇÃO -->
+  <div id="panel-expedicao" class="panel">
 
-<!-- MODAL ADICIONAR -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="fila-status">
+        <div class="fila-dot" id="filaDot"></div>
+        <span id="filaStatusTxt">Conectando ao gateway...</span>
+        <span style="margin-left:auto;font-size:0.72rem;color:#9b8732;font-weight:700" id="filaContador">Fila: 0</span>
+      </div>
+      <div id="filaAguardando" style="display:none" class="fila-aguardando">
+        ⏳ <span id="filaAguardandoTxt"></span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        Na fila
+        <span style="font-size:0.72rem;color:#7a7464;font-weight:400">1 por minuto — clique em ✕ para cancelar</span>
+      </div>
+      <div id="filaLista"><div class="fila-vazia">Fila vazia</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Últimas enviadas</div>
+      <div id="filaHistorico"><div class="fila-vazia">Nenhuma enviada ainda</div></div>
+    </div>
+
+  </div>
+
+</div>
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <h3 id="modalTitulo">Adicionar</h3>
@@ -265,13 +343,6 @@
 <script>
   let dadosGlobais = { leads: [], sessoes: [], mensagens: [], cancelados: [], passados: [] };
   let modalTipo = '';
-
-  function showTab(tab, el) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    el.classList.add('active');
-    document.getElementById('panel-' + tab).classList.add('active');
-  }
 
   function showToast(msg, erro = false) {
     const t = document.getElementById('toast');
@@ -633,6 +704,115 @@
 
   carregarDados();
   setInterval(carregarDados, 60000);
+
+  // ── EXPEDIÇÃO ──
+  let filaInterval = null;
+
+  function showTab(tab, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    // Para polling ao sair da expedição
+    if (tab !== 'expedicao' && filaInterval) {
+      clearInterval(filaInterval);
+      filaInterval = null;
+    }
+  }
+
+  function abrirExpedicao(el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-expedicao').classList.add('active');
+    iniciarPollingFila();
+  }
+
+  function iniciarPollingFila() {
+    if (filaInterval) return;
+    atualizarFila();
+    filaInterval = setInterval(atualizarFila, 2000);
+  }
+
+  async function atualizarFila() {
+    const dot = document.getElementById('filaDot');
+    const txt = document.getElementById('filaStatusTxt');
+    try {
+      const r = await fetch('/admin/fila');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const dados = await r.json();
+
+      dot.className = 'fila-dot conectado';
+      txt.textContent = 'Gateway conectado — atualizando a cada 2s';
+
+      renderFilaLista(dados.fila, dados.processando);
+      renderFilaHistorico(dados.historico);
+
+      const n = (dados.fila || []).length;
+      const badge = document.getElementById('fila-badge');
+      badge.style.display = n > 0 ? 'inline' : 'none';
+      if (n > 0) badge.textContent = n;
+      document.getElementById('filaContador').textContent = 'Fila: ' + n;
+
+      const aguardandoDiv = document.getElementById('filaAguardando');
+      if (dados.processando) {
+        aguardandoDiv.style.display = 'flex';
+        document.getElementById('filaAguardandoTxt').textContent = 'Enviando mensagem...';
+        dot.className = 'fila-dot enviando';
+      } else {
+        aguardandoDiv.style.display = 'none';
+      }
+    } catch (err) {
+      dot.className = 'fila-dot';
+      txt.textContent = 'Gateway indisponível — tentando reconectar...';
+    }
+  }
+
+  function fmtFila(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderFilaLista(fila, processando) {
+    const el = document.getElementById('filaLista');
+    if (!fila || !fila.length) { el.innerHTML = '<div class="fila-vazia">Fila vazia ✓</div>'; return; }
+    el.innerHTML = fila.map((item, i) => `
+      <div class="fila-item">
+        <div class="fila-pos ${item.imediato ? 'imediato' : ''}">${item.imediato ? '⚡' : i + 1}</div>
+        <div class="fila-info">
+          <div class="fila-nome">${item.nome||''} <span class="badge badge-gray">${item.origem||''}</span></div>
+          <div class="fila-preview">${(item.preview||'').replace(/</g,'&lt;')}...</div>
+        </div>
+        <div class="fila-meta">
+          ${fmtFila(item.entrou_em)}
+          <button class="btn btn-danger" onclick="cancelarFilaItem(${item.id},'${(item.nome||'').replace(/'/g,"\\'")}')">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderFilaHistorico(historico) {
+    const el = document.getElementById('filaHistorico');
+    if (!historico || !historico.length) { el.innerHTML = '<div class="fila-vazia">Nenhuma enviada ainda</div>'; return; }
+    el.innerHTML = historico.map(item => `
+      <div class="hist-item">
+        <span class="${item.sucesso ? 'hist-ok' : 'hist-err'}">${item.sucesso ? '✓' : '✕'}</span>
+        <div class="hist-info">
+          <div class="hist-nome">${item.nome||''} <span class="badge badge-gray">${item.origem||''}</span></div>
+          <div class="hist-preview">${(item.preview||'').replace(/</g,'&lt;')}...</div>
+        </div>
+        <span class="hist-ts">${fmtFila(item.enviado_em)}</span>
+      </div>
+    `).join('');
+  }
+
+  async function cancelarFilaItem(id, nome) {
+    if (!confirm('Cancelar mensagem para ' + nome + '?')) return;
+    const r = await fetch('/admin/fila/' + id, { method: 'DELETE' });
+    const d = await r.json();
+    if (d.success) showToast('Mensagem para ' + nome + ' cancelada');
+    else showToast(d.error || 'Erro ao cancelar', true);
+  }
 </script>
 </body>
 </html>
