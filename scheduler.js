@@ -1,5 +1,4 @@
 const cron = require('node-cron');
-const axios = require('axios');
 const config = require('./config');
 const {
     buscarPendentes,
@@ -9,19 +8,17 @@ const {
     registrarMensagem,
     jaEnviou
 } = require('./db');
-const { enfileirar } = require('./send-queue');
 const { emitir, EVENTOS } = require('./monitor-events');
+const { enviarViaGateway, formatarTelefone } = require('./whatsapp');
 
-async function enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem) {
-    const instanceEncoded = encodeURIComponent(instance);
-    await axios.post(
-        `${evolutionUrl}/message/sendText/${instanceEncoded}`,
-        { number: telefone, text: mensagem },
-        { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
-    );
+// ── ENVIAR VIA GATEWAY (fila normal) ──
+async function enviarNaFila(telefone, mensagem, nome, origem) {
+    const numero = formatarTelefone(telefone);
+    await enviarViaGateway(numero, mensagem, nome, false); // false = vai para a fila
+    emitir(EVENTOS.ENVIO_SUCESSO, { job: origem, nome, telefone: numero });
 }
 
-function iniciarScheduler(evolutionUrl, apiKey, instance) {
+function iniciarScheduler() {
     console.log('⏰ Scheduler de WhatsApp iniciado');
 
     // ── 1. CONVITE — Seg-Sab às 13h40 ──
@@ -37,12 +34,14 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             const telefone = r.telefone;
             const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(telefone)}`;
 
-            enfileirar(async () => {
-                await enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, config.mensagens.reconvite(nome, link));
+            try {
+                await enviarNaFila(telefone, config.mensagens.reconvite(nome, link), nome, 'convite');
                 await marcarEnviado(r.id);
                 await registrarMensagem(r.id, 'whatsapp_agendados', 'convite');
-                console.log(`✅ Convite enviado para ${nome}`);
-            }, 'convite', nome, telefone);
+                console.log(`📥 Convite enfileirado para ${nome}`);
+            } catch (err) {
+                console.error(`❌ Erro ao enfileirar convite para ${nome}:`, err.message);
+            }
         }
 
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'convite', total: pendentes.length });
@@ -50,7 +49,7 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
 
     // ── 2. SÁBADO 13h — link 1 hora antes ──
     cron.schedule(config.horarios.sabadoUmaHora, async () => {
-        console.log('⏰ Sábado 13h — enviando link Meet...');
+        console.log('⏰ Sábado 13h — enfileirando link Meet...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_1h' });
 
         const confirmados = await buscarConfirmadosParaSabado();
@@ -61,20 +60,22 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
             const nome = r.nome;
             const telefone = r.telefone;
 
-            enfileirar(async () => {
-                await enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, config.mensagens.sabadoUmaHora(nome, config.meetLink));
+            try {
+                await enviarNaFila(telefone, config.mensagens.sabadoUmaHora(nome, config.meetLink), nome, 'sabado_1h');
                 await registrarMensagem(r.id, 'sessoes_agendadas', 'sabado_1h');
-                console.log(`✅ Link Meet enviado para ${nome}`);
-            }, 'sabado_1h', nome, telefone);
-            enfileirados++;
+                console.log(`📥 Link Meet enfileirado para ${nome}`);
+                enfileirados++;
+            } catch (err) {
+                console.error(`❌ Erro ao enfileirar link Meet para ${nome}:`, err.message);
+            }
         }
 
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_1h', total: enfileirados });
     });
 
-    // ── 3. SÁBADO 14h — fecha janela, move não-confirmados para passados ──
+    // ── 3. SÁBADO 14h — fecha janela ──
     cron.schedule('00 14 * * 6', async () => {
-        console.log('⏰ Sábado 14h — fechando janela, movendo não-confirmados para passados...');
+        console.log('⏰ Sábado 14h — fechando janela...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'fechar_janela' });
         try {
             const total = await moverTodosNaoConfirmadosParaPassados();
@@ -85,4 +86,4 @@ function iniciarScheduler(evolutionUrl, apiKey, instance) {
     });
 }
 
-module.exports = { iniciarScheduler, enviarWhatsApp };
+module.exports = { iniciarScheduler };
