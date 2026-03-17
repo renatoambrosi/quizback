@@ -1,11 +1,31 @@
 const axios = require('axios');
+
+// ── HELPER ──
+function formatarTelefone(telefone) {
+    const num = String(telefone).replace(/\D/g, '');
+    if (num.startsWith('55')) return num;
+    if (num.startsWith('0')) return `55${num.slice(1)}`;
+    return `55${num}`;
+}
+
+async function enviarViaGateway(telefone, mensagem, nome, imediato = false) {
+    const url = process.env.GATEWAY_URL;
+    const token = process.env.GATEWAY_TOKEN;
+
+    if (!url || !token) throw new Error('GATEWAY_URL ou GATEWAY_TOKEN não configurados');
+
+    await axios.post(
+        `${url}/enviar`,
+        { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato },
+        { headers: { 'x-gateway-token': token, 'Content-Type': 'application/json' }, timeout: 10000 }
+    );
+}
+
 class WhatsAppNotifier {
     constructor() {
-        this.evolutionUrl = process.env.EVOLUTION_URL;
-        this.apiKey = process.env.EVOLUTION_API_KEY;
-        this.instance = process.env.EVOLUTION_INSTANCE;
         this.sheetUrl = process.env.GOOGLE_SHEET_URL;
     }
+
     async buscarCliente(uid) {
         const response = await axios.get(`${this.sheetUrl}?uid=${uid}`);
         if (!response.data.found) return null;
@@ -14,38 +34,32 @@ class WhatsAppNotifier {
             telefone: response.data.respostas[1]
         };
     }
+
+    // ── RESULTADO DO TESTE — IMEDIATO (pula a fila) ──
     async enviarMensagemAprovacao(uid) {
         try {
             console.log(`📱 WhatsApp iniciando para UID: ${uid}`);
             const cliente = await this.buscarCliente(uid);
-            console.log(`📱 Cliente encontrado:`, cliente);
-            if (!cliente) return;
-            console.log(`📱 Telefone raw:`, cliente.telefone);
-            console.log(`📱 Tipo:`, typeof cliente.telefone);
-            console.log(`📱 String:`, String(cliente.telefone));
-            const numero = String(cliente.telefone).replace(/\D/g, '');
-            console.log(`📱 Após replace:`, numero);
-            const numeroFinal = numero.startsWith('55')
-                ? numero
-                : numero.startsWith('0')
-                    ? `55${numero.slice(1)}`
-                    : `55${numero}`;
-            console.log(`📱 Número final:`, numeroFinal);
-            const instanceEncoded = encodeURIComponent(this.instance);
-            const mensagem = `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n🔎O resultado do seu Teste de Prosperidade já está disponível!\n\nEstá animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado4?uid=${uid}`;
-            await axios.post(
-                `${this.evolutionUrl}/message/sendText/${instanceEncoded}`,
-                { number: numeroFinal, text: mensagem },
-                { headers: { 'apikey': this.apiKey, 'Content-Type': 'application/json' } }
-            );
+            if (!cliente) { console.log('📱 Cliente não encontrado'); return; }
+
+            const numeroFinal = formatarTelefone(cliente.telefone);
+            console.log(`📱 Número final: ${numeroFinal}`);
+
+            const mensagem =
+                `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n` +
+                `🔎O resultado do seu Teste de Prosperidade já está disponível!\n\n` +
+                `Está animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n` +
+                `👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado4?uid=${uid}`;
+
+            // imediato = true — pessoa acabou de pagar, não pode esperar fila
+            await enviarViaGateway(numeroFinal, mensagem, cliente.nome, true);
             console.log(`✅ WhatsApp enviado para ${cliente.nome} (${numeroFinal})`);
         } catch (error) {
             console.error('❌ Erro WhatsApp:', error.message);
-            if (error.response) {
-                console.error('❌ Resposta Evolution:', JSON.stringify(error.response.data));
-                console.error('❌ Status:', error.response.status);
-            }
         }
     }
 }
+
 module.exports = WhatsAppNotifier;
+module.exports.enviarViaGateway = enviarViaGateway;
+module.exports.formatarTelefone = formatarTelefone;
