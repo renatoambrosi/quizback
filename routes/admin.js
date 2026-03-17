@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const axios = require('axios');
 const config = require('../config');
 const {
     listarLeads, listarSessoes, listarMensagensEnviadas, listarCancelados, listarPassados,
@@ -11,9 +12,12 @@ const {
     adicionarLead, adicionarSessao,
     registrarMensagem
 } = require('../db');
-const { enviarWhatsApp } = require('../scheduler');
-const { enfileirar, tamanhoFila } = require('../send-queue');
 const { emitir, EVENTOS, registrarCliente } = require('../monitor-events');
+const { enviarViaGateway, formatarTelefone } = require('../whatsapp');
+
+function gatewayHeaders() {
+    return { 'x-gateway-token': process.env.GATEWAY_TOKEN };
+}
 
 function autenticar(req, res, next) {
     const auth = req.headers['authorization'];
@@ -147,45 +151,55 @@ router.post('/admin/adicionar-sessao', autenticar, async (req, res) => {
     }
 });
 
-// Envio manual — passa pela fila (exceto resultado do teste que usa whatsapp.js diretamente)
+// Envio manual — passa pela fila do gateway
 router.post('/admin/enviar', autenticar, async (req, res) => {
     try {
         const { tipo, id, nome, telefone, etapa } = req.body;
-        const evolutionUrl = process.env.EVOLUTION_URL;
-        const apiKey = process.env.EVOLUTION_API_KEY;
-        const instance = process.env.EVOLUTION_INSTANCE;
+        const numero = formatarTelefone(telefone);
         const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(telefone)}`;
 
         let mensagem = '';
         switch (etapa) {
-            case 'convite':   mensagem = config.mensagens.reconvite(nome, link); break;
-            case 'link_meet': mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
+            case 'convite':     mensagem = config.mensagens.reconvite(nome, link); break;
+            case 'link_meet':   mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
             case 'confirmacao': mensagem = config.mensagens.confirmacao(nome, 'próximo sábado'); break;
-            case 'sabado_1h': mensagem = config.mensagens.sabadoUmaHora(nome, config.meetLink); break;
+            case 'sabado_1h':   mensagem = config.mensagens.sabadoUmaHora(nome, config.meetLink); break;
             default: return res.status(400).json({ error: 'Etapa inválida' });
         }
 
-        const info = enfileirar(async () => {
-            await enviarWhatsApp(evolutionUrl, apiKey, instance, telefone, mensagem);
-            await registrarMensagem(id, tipo, etapa);
-            console.log(`✅ Envio manual: ${etapa} para ${nome}`);
+        // Envia para a fila do gateway (imediato=false)
+        const resp = await enviarViaGateway(numero, mensagem, nome, false);
 
-            // Se convite para cancelado → reativa automaticamente
-            if (etapa === 'convite' && tipo === 'cancelados') {
-                const { reativarCancelado } = require('../db');
-                await reativarCancelado(id).catch(e => console.error('Erro reativar cancelado:', e.message));
-            }
-            // Se convite para passado → reativa automaticamente
-            if (etapa === 'convite' && tipo === 'passados') {
-                const { reativarPassado } = require('../db');
-                await reativarPassado(id).catch(e => console.error('Erro reativar passado:', e.message));
-            }
-        }, etapa, nome, telefone);
+        // Registra no banco e reativa se necessário
+        await registrarMensagem(id, tipo, etapa);
+        if (etapa === 'convite' && tipo === 'cancelados') await reativarCancelado(id).catch(e => console.error('Erro reativar cancelado:', e.message));
+        if (etapa === 'convite' && tipo === 'passados')   await reativarPassado(id).catch(e => console.error('Erro reativar passado:', e.message));
 
-        res.json({ success: true, etapa, nome, posicao: info.posicao, imediato: info.imediato });
+        res.json({ success: true, etapa, nome, posicao: resp?.posicao || 1, imediato: false });
     } catch (err) {
         console.error('❌ Erro envio manual:', err.message);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ── FILA — proxy para o gateway ──
+
+router.get('/admin/fila', autenticar, async (req, res) => {
+    try {
+        const resp = await axios.get(`${process.env.GATEWAY_URL}/fila`, { headers: gatewayHeaders(), timeout: 5000 });
+        res.json(resp.data);
+    } catch (err) {
+        res.status(500).json({ error: 'Gateway indisponível', detalhe: err.message });
+    }
+});
+
+router.delete('/admin/fila/:id', autenticar, async (req, res) => {
+    try {
+        const resp = await axios.delete(`${process.env.GATEWAY_URL}/fila/${req.params.id}`, { headers: gatewayHeaders(), timeout: 5000 });
+        res.json(resp.data);
+    } catch (err) {
+        const status = err.response?.status || 500;
+        res.status(status).json({ error: err.response?.data?.error || err.message });
     }
 });
 
