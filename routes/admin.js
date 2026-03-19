@@ -6,11 +6,11 @@ const config = require('../config');
 const {
     listarLeads, listarSessoes, listarMensagensEnviadas, listarCancelados, listarPassados,
     atualizarLead, atualizarSessao,
-    deletarLead, deletarSessao, deletarPassado,
-    cancelarLead, moverParaConfirmados,
+    deletarLead, deletarSessao, deletarPassado, deletarCancelado,
+    cancelarLead, moverParaPassados,
     reativarCancelado, reativarPassado,
     adicionarLead, adicionarSessao,
-    registrarMensagem
+    registrarMensagem, registrarLead,
 } = require('../db');
 const { emitir, EVENTOS, registrarCliente } = require('../monitor-events');
 const { enviarViaGateway, formatarTelefone } = require('../whatsapp');
@@ -31,6 +31,8 @@ function autenticar(req, res, next) {
     return res.status(401).send('Usuário ou senha incorretos');
 }
 
+// ── PAINEL ──
+
 router.get('/admin', autenticar, (req, res) => {
     res.sendFile(path.join(__dirname, '../admin.html'));
 });
@@ -46,18 +48,11 @@ router.get('/admin/dados', autenticar, async (req, res) => {
     }
 });
 
+// ── LEADS ──
+
 router.put('/admin/lead/:id', autenticar, async (req, res) => {
     try {
         await atualizarLead(req.params.id, req.body);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.put('/admin/sessao/:id', autenticar, async (req, res) => {
-    try {
-        await atualizarSessao(req.params.id, req.body);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -73,24 +68,6 @@ router.delete('/admin/lead/:id', autenticar, async (req, res) => {
     }
 });
 
-router.delete('/admin/sessao/:id', autenticar, async (req, res) => {
-    try {
-        await deletarSessao(req.params.id);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.delete('/admin/passado/:id', autenticar, async (req, res) => {
-    try {
-        await deletarPassado(req.params.id);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 router.post('/admin/cancelar/:id', autenticar, async (req, res) => {
     try {
         await cancelarLead(req.params.id);
@@ -100,29 +77,9 @@ router.post('/admin/cancelar/:id', autenticar, async (req, res) => {
     }
 });
 
-router.post('/admin/mover/:id', autenticar, async (req, res) => {
+router.post('/admin/mover-passado/:id', autenticar, async (req, res) => {
     try {
-        const sessaoId = await moverParaConfirmados(req.params.id);
-        res.json({ success: true, sessaoId });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Reativar cancelado → semana vigente (convite já feito, enviado=TRUE)
-router.post('/admin/reativar-cancelado/:id', autenticar, async (req, res) => {
-    try {
-        await reativarCancelado(req.params.id);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Reativar passado → semana vigente (convite já feito, enviado=TRUE)
-router.post('/admin/reativar-passado/:id', autenticar, async (req, res) => {
-    try {
-        await reativarPassado(req.params.id);
+        await moverParaPassados(req.params.id);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -140,6 +97,26 @@ router.post('/admin/adicionar-lead', autenticar, async (req, res) => {
     }
 });
 
+// ── SESSOES ──
+
+router.put('/admin/sessao/:id', autenticar, async (req, res) => {
+    try {
+        await atualizarSessao(req.params.id, req.body);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/admin/sessao/:id', autenticar, async (req, res) => {
+    try {
+        await deletarSessao(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.post('/admin/adicionar-sessao', autenticar, async (req, res) => {
     try {
         const { nome, telefone, data_sessao } = req.body;
@@ -151,31 +128,63 @@ router.post('/admin/adicionar-sessao', autenticar, async (req, res) => {
     }
 });
 
-// Envio manual — passa pela fila do gateway
+// ── CANCELADOS ──
+
+router.post('/admin/reativar-cancelado/:id', autenticar, async (req, res) => {
+    try {
+        await reativarCancelado(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/admin/cancelados/:id', autenticar, async (req, res) => {
+    try {
+        await deletarCancelado(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── PASSADOS ──
+
+router.post('/admin/reativar-passado/:id', autenticar, async (req, res) => {
+    try {
+        await reativarPassado(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/admin/passado/:id', autenticar, async (req, res) => {
+    try {
+        await deletarPassado(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── ENVIO MANUAL ──
+
 router.post('/admin/enviar', autenticar, async (req, res) => {
     try {
-        const { tipo, id, nome, telefone, etapa } = req.body;
+        const { nome, telefone, etapa } = req.body;
         const numero = formatarTelefone(telefone);
-        const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(telefone)}`;
+        const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(numero)}`;
 
         let mensagem = '';
         switch (etapa) {
-            case 'convite':     mensagem = config.mensagens.reconvite(nome, link); break;
-            case 'link_meet':   mensagem = config.mensagens.linkMeet(nome, config.meetLink); break;
-            case 'confirmacao': mensagem = config.mensagens.confirmacao(nome, 'próximo sábado'); break;
-            case 'sabado_1h':   mensagem = config.mensagens.sabadoUmaHora(nome, config.meetLink); break;
+            case 'convite':      mensagem = config.mensagens.convite(nome, link); break;
+            case 'confirmacao':  mensagem = config.mensagens.confirmacao(nome, config.grupoSessaoLink); break;
             default: return res.status(400).json({ error: 'Etapa inválida' });
         }
 
-        // Envia para a fila do gateway (imediato=false)
         const resp = await enviarViaGateway(numero, mensagem, nome, false);
-
-        // Registra no banco e reativa se necessário
-        await registrarMensagem(id, tipo, etapa);
-        if (etapa === 'convite' && tipo === 'cancelados') await reativarCancelado(id).catch(e => console.error('Erro reativar cancelado:', e.message));
-        if (etapa === 'convite' && tipo === 'passados')   await reativarPassado(id).catch(e => console.error('Erro reativar passado:', e.message));
-
-        res.json({ success: true, etapa, nome, posicao: resp?.posicao || 1, imediato: false });
+        res.json({ success: true, etapa, nome, posicao: resp?.posicao || 1 });
     } catch (err) {
         console.error('❌ Erro envio manual:', err.message);
         res.status(500).json({ error: err.message });
