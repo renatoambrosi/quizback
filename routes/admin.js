@@ -2,18 +2,19 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const axios = require('axios');
-const config = require('../config');
 const {
     listarLeads, listarSessoes, listarMensagensEnviadas, listarCancelados, listarPassados,
+    listarMensagensConfig, atualizarMensagemConfig, getMensagemConfig,
     atualizarLead, atualizarSessao,
     deletarLead, deletarSessao, deletarPassado, deletarCancelado,
     cancelarLead, moverParaPassados,
     reativarCancelado, reativarPassado,
     adicionarLead, adicionarSessao,
-    registrarMensagem, registrarLead,
+    registrarMensagem,
 } = require('../db');
 const { emitir, EVENTOS, registrarCliente } = require('../monitor-events');
 const { enviarViaGateway, formatarTelefone } = require('../whatsapp');
+const { dispararMensagemGrupo, enviarNoGrupo } = require('../scheduler');
 
 function gatewayHeaders() {
     return { 'x-gateway-token': process.env.GATEWAY_TOKEN };
@@ -39,10 +40,11 @@ router.get('/admin', autenticar, (req, res) => {
 
 router.get('/admin/dados', autenticar, async (req, res) => {
     try {
-        const [leads, sessoes, mensagens, cancelados, passados] = await Promise.all([
-            listarLeads(), listarSessoes(), listarMensagensEnviadas(), listarCancelados(), listarPassados()
+        const [leads, sessoes, mensagens, cancelados, passados, mensagensConfig] = await Promise.all([
+            listarLeads(), listarSessoes(), listarMensagensEnviadas(),
+            listarCancelados(), listarPassados(), listarMensagensConfig()
         ]);
-        res.json({ leads, sessoes, mensagens, cancelados, passados });
+        res.json({ leads, sessoes, mensagens, cancelados, passados, mensagensConfig });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -168,25 +170,64 @@ router.delete('/admin/passado/:id', autenticar, async (req, res) => {
     }
 });
 
-// ── ENVIO MANUAL ──
+// ── ENVIO MANUAL INDIVIDUAL ──
 
 router.post('/admin/enviar', autenticar, async (req, res) => {
     try {
         const { nome, telefone, etapa } = req.body;
+        if (!nome || !telefone || !etapa) return res.status(400).json({ error: 'Dados incompletos' });
+
         const numero = formatarTelefone(telefone);
         const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(numero)}`;
+        const grupoLink = process.env.GRUPO_SESSAO_LINK || 'https://chat.whatsapp.com/F9XSTevtPPO6gvSxvevXvW?mode=gi_t';
 
-        let mensagem = '';
-        switch (etapa) {
-            case 'convite':      mensagem = config.mensagens.convite(nome, link); break;
-            case 'confirmacao':  mensagem = config.mensagens.confirmacao(nome, config.grupoSessaoLink); break;
-            default: return res.status(400).json({ error: 'Etapa inválida' });
-        }
+        let textoBase = await getMensagemConfig(etapa);
+        if (!textoBase) return res.status(400).json({ error: `Mensagem '${etapa}' não encontrada` });
+
+        const mensagem = textoBase
+            .replace(/\{nome\}/gi, nome)
+            .replace(/\{link\}/gi, link)
+            .replace(/\{grupo_link\}/gi, grupoLink);
 
         const resp = await enviarViaGateway(numero, mensagem, nome, false);
         res.json({ success: true, etapa, nome, posicao: resp?.posicao || 1 });
     } catch (err) {
         console.error('❌ Erro envio manual:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── MENSAGENS CONFIG ──
+
+router.put('/admin/mensagem/:chave', autenticar, async (req, res) => {
+    try {
+        const { texto } = req.body;
+        if (!texto) return res.status(400).json({ error: 'Texto obrigatório' });
+        await atualizarMensagemConfig(req.params.chave, texto);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── DISPARO MANUAL PARA O GRUPO ──
+
+router.post('/admin/grupo/disparar/:chave', autenticar, async (req, res) => {
+    try {
+        await dispararMensagemGrupo(req.params.chave, `manual_${req.params.chave}`);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/admin/grupo/livre', autenticar, async (req, res) => {
+    try {
+        const { mensagem } = req.body;
+        if (!mensagem) return res.status(400).json({ error: 'Mensagem obrigatória' });
+        await enviarNoGrupo(mensagem, 'manual_livre');
+        res.json({ success: true });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
@@ -212,7 +253,6 @@ router.delete('/admin/fila/:id', autenticar, async (req, res) => {
     }
 });
 
-// SSE — monitor em tempo real
 router.get('/admin/monitor/stream', autenticar, (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
