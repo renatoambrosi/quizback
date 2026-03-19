@@ -1,88 +1,70 @@
 const cron = require('node-cron');
 const config = require('./config');
-const {
-    buscarPendentes,
-    buscarConfirmadosParaSabado,
-    moverTodosNaoConfirmadosParaPassados,
-    marcarEnviado,
-    registrarMensagem,
-    jaEnviou
-} = require('./db');
 const { emitir, EVENTOS } = require('./monitor-events');
-const { enviarViaGateway, formatarTelefone } = require('./whatsapp');
+const { enviarViaGateway } = require('./whatsapp');
+const axios = require('axios');
 
-// ── ENVIAR VIA GATEWAY (fila normal) ──
-async function enviarNaFila(telefone, mensagem, nome, origem) {
-    const numero = formatarTelefone(telefone);
-    await enviarViaGateway(numero, mensagem, nome, false); // false = vai para a fila
-    emitir(EVENTOS.ENVIO_SUCESSO, { job: origem, nome, telefone: numero });
+// ── ENVIAR MENSAGEM PARA O GRUPO VIA EVOLUTION API ──
+async function enviarNoGrupo(mensagem, origem) {
+    const evolutionUrl = process.env.EVOLUTION_URL;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    const instance = encodeURIComponent(process.env.EVOLUTION_INSTANCE);
+    const jid = config.grupoSessaoJid;
+
+    try {
+        await axios.post(
+            `${evolutionUrl}/message/sendText/${instance}`,
+            {
+                number: jid,
+                text: mensagem,
+            },
+            {
+                headers: { apikey: apiKey, 'Content-Type': 'application/json' },
+                timeout: 10000,
+            }
+        );
+        console.log(`✅ Mensagem enviada no grupo (${origem})`);
+        emitir(EVENTOS.ENVIO_SUCESSO, { job: origem, nome: 'Grupo Sessão', telefone: jid });
+    } catch (err) {
+        const detalhe = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+        console.error(`❌ Erro ao enviar no grupo (${origem}): ${detalhe}`);
+        emitir(EVENTOS.ENVIO_ERRO, { job: origem, erro: detalhe });
+    }
 }
 
 function iniciarScheduler() {
-    console.log('⏰ Scheduler de WhatsApp iniciado');
+    console.log('⏰ Scheduler iniciado');
 
-    // ── 1. CONVITE — Seg-Sab às 13h40 ──
-    cron.schedule(config.horarios.envioConvite, async () => {
-        console.log('⏰ 13h40 — Verificando convites...');
-        emitir(EVENTOS.SCHEDULER_INICIO, { job: 'convite' });
-
-        const pendentes = await buscarPendentes();
-        console.log(`📋 ${pendentes.length} convite(s) pendente(s)`);
-
-        for (const r of pendentes) {
-            const nome = r.nome;
-            const telefone = r.telefone;
-            const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(telefone)}`;
-
-            try {
-                await enviarNaFila(telefone, config.mensagens.reconvite(nome, link), nome, 'convite');
-                await marcarEnviado(r.id);
-                await registrarMensagem(r.id, 'whatsapp_agendados', 'convite');
-                console.log(`📥 Convite enfileirado para ${nome}`);
-            } catch (err) {
-                console.error(`❌ Erro ao enfileirar convite para ${nome}:`, err.message);
-            }
-        }
-
-        emitir(EVENTOS.SCHEDULER_FIM, { job: 'convite', total: pendentes.length });
+    // ── QUARTA às 10h — aquecimento no grupo ──
+    cron.schedule(config.horarios.quarta, async () => {
+        console.log('⏰ Quarta 10h — enviando aquecimento no grupo...');
+        emitir(EVENTOS.SCHEDULER_INICIO, { job: 'quarta' });
+        await enviarNoGrupo(config.mensagens.quarta(), 'quarta');
+        emitir(EVENTOS.SCHEDULER_FIM, { job: 'quarta' });
     });
 
-    // ── 2. SÁBADO 13h — link 1 hora antes ──
+    // ── SEXTA às 10h — "é amanhã" no grupo ──
+    cron.schedule(config.horarios.sexta, async () => {
+        console.log('⏰ Sexta 10h — enviando aviso de amanhã no grupo...');
+        emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sexta' });
+        await enviarNoGrupo(config.mensagens.sexta(), 'sexta');
+        emitir(EVENTOS.SCHEDULER_FIM, { job: 'sexta' });
+    });
+
+    // ── SÁBADO 13h — falta 1 hora no grupo ──
     cron.schedule(config.horarios.sabadoUmaHora, async () => {
-        console.log('⏰ Sábado 13h — enfileirando link Meet...');
+        console.log('⏰ Sábado 13h — enviando "falta 1 hora" no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_1h' });
-
-        const confirmados = await buscarConfirmadosParaSabado();
-        let enfileirados = 0;
-
-        for (const r of confirmados) {
-            if (await jaEnviou(r.id, 'sessoes_agendadas', 'sabado_1h')) continue;
-            const nome = r.nome;
-            const telefone = r.telefone;
-
-            try {
-                await enviarNaFila(telefone, config.mensagens.sabadoUmaHora(nome, config.meetLink), nome, 'sabado_1h');
-                await registrarMensagem(r.id, 'sessoes_agendadas', 'sabado_1h');
-                console.log(`📥 Link Meet enfileirado para ${nome}`);
-                enfileirados++;
-            } catch (err) {
-                console.error(`❌ Erro ao enfileirar link Meet para ${nome}:`, err.message);
-            }
-        }
-
-        emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_1h', total: enfileirados });
+        await enviarNoGrupo(config.mensagens.sabadoUmaHora(config.meetLink), 'sabado_1h');
+        emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_1h' });
     });
 
-    // ── 3. SÁBADO 14h — fecha janela ──
-    cron.schedule('00 14 * * 6', async () => {
-        console.log('⏰ Sábado 14h — fechando janela...');
-        emitir(EVENTOS.SCHEDULER_INICIO, { job: 'fechar_janela' });
-        try {
-            const total = await moverTodosNaoConfirmadosParaPassados();
-            emitir(EVENTOS.SCHEDULER_FIM, { job: 'fechar_janela', total });
-        } catch (err) {
-            console.error('❌ Erro ao fechar janela:', err.message);
-        }
+    // ── SÁBADO 13h45 — faltam 15 minutos no grupo ──
+    cron.schedule(config.horarios.sabadoQuinzeMin, async () => {
+        console.log('⏰ Sábado 13h45 — enviando "faltam 15 minutos" no grupo...');
+        emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_15min' });
+        await enviarNoGrupo(config.mensagens.sabadoQuinzeMin(config.meetLink), 'sabado_15min');
+        emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_15min' });
     });
 }
 
