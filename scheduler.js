@@ -1,30 +1,32 @@
 const cron = require('node-cron');
-const config = require('./config');
+const { getMensagemConfig } = require('./db');
 const { emitir, EVENTOS } = require('./monitor-events');
-const { enviarViaGateway } = require('./whatsapp');
 const axios = require('axios');
+
+const GRUPO_SESSAO_JID = process.env.GRUPO_SESSAO_JID || '120363423552674236@g.us';
+
+// ── HORÁRIOS ──
+const HORARIOS = {
+    quarta:       '00 10 * * 3',  // Quarta às 10h
+    sexta:        '00 10 * * 5',  // Sexta às 10h
+    sabado_1h:    '00 13 * * 6',  // Sábado às 13h
+    sabado_15min: '45 13 * * 6',  // Sábado às 13h45
+};
 
 // ── ENVIAR MENSAGEM PARA O GRUPO VIA EVOLUTION API ──
 async function enviarNoGrupo(mensagem, origem) {
     const evolutionUrl = process.env.EVOLUTION_URL;
     const apiKey = process.env.EVOLUTION_API_KEY;
     const instance = encodeURIComponent(process.env.EVOLUTION_INSTANCE);
-    const jid = config.grupoSessaoJid;
 
     try {
         await axios.post(
             `${evolutionUrl}/message/sendText/${instance}`,
-            {
-                number: jid,
-                text: mensagem,
-            },
-            {
-                headers: { apikey: apiKey, 'Content-Type': 'application/json' },
-                timeout: 10000,
-            }
+            { number: GRUPO_SESSAO_JID, text: mensagem },
+            { headers: { apikey: apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
         );
         console.log(`✅ Mensagem enviada no grupo (${origem})`);
-        emitir(EVENTOS.ENVIO_SUCESSO, { job: origem, nome: 'Grupo Sessão', telefone: jid });
+        emitir(EVENTOS.ENVIO_SUCESSO, { job: origem, nome: 'Grupo Sessão', telefone: GRUPO_SESSAO_JID });
     } catch (err) {
         const detalhe = err.response?.data ? JSON.stringify(err.response.data) : err.message;
         console.error(`❌ Erro ao enviar no grupo (${origem}): ${detalhe}`);
@@ -32,40 +34,47 @@ async function enviarNoGrupo(mensagem, origem) {
     }
 }
 
+async function dispararMensagemGrupo(chave, origem) {
+    const meetLink = process.env.GOOGLE_MEET_LINK || 'https://meet.google.com';
+    let texto = await getMensagemConfig(chave);
+    if (!texto) {
+        console.error(`❌ Mensagem '${chave}' não encontrada no banco`);
+        return;
+    }
+    texto = texto.replace(/\{meet_link\}/gi, meetLink);
+    await enviarNoGrupo(texto, origem);
+}
+
 function iniciarScheduler() {
     console.log('⏰ Scheduler iniciado');
 
-    // ── QUARTA às 10h — aquecimento no grupo ──
-    cron.schedule(config.horarios.quarta, async () => {
+    cron.schedule(HORARIOS.quarta, async () => {
         console.log('⏰ Quarta 10h — enviando aquecimento no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'quarta' });
-        await enviarNoGrupo(config.mensagens.quarta(), 'quarta');
+        await dispararMensagemGrupo('quarta', 'quarta');
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'quarta' });
     });
 
-    // ── SEXTA às 10h — "é amanhã" no grupo ──
-    cron.schedule(config.horarios.sexta, async () => {
+    cron.schedule(HORARIOS.sexta, async () => {
         console.log('⏰ Sexta 10h — enviando aviso de amanhã no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sexta' });
-        await enviarNoGrupo(config.mensagens.sexta(), 'sexta');
+        await dispararMensagemGrupo('sexta', 'sexta');
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'sexta' });
     });
 
-    // ── SÁBADO 13h — falta 1 hora no grupo ──
-    cron.schedule(config.horarios.sabadoUmaHora, async () => {
+    cron.schedule(HORARIOS.sabado_1h, async () => {
         console.log('⏰ Sábado 13h — enviando "falta 1 hora" no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_1h' });
-        await enviarNoGrupo(config.mensagens.sabadoUmaHora(config.meetLink), 'sabado_1h');
+        await dispararMensagemGrupo('sabado_1h', 'sabado_1h');
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_1h' });
     });
 
-    // ── SÁBADO 13h45 — faltam 15 minutos no grupo ──
-    cron.schedule(config.horarios.sabadoQuinzeMin, async () => {
+    cron.schedule(HORARIOS.sabado_15min, async () => {
         console.log('⏰ Sábado 13h45 — enviando "faltam 15 minutos" no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_15min' });
-        await enviarNoGrupo(config.mensagens.sabadoQuinzeMin(config.meetLink), 'sabado_15min');
+        await dispararMensagemGrupo('sabado_15min', 'sabado_15min');
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_15min' });
     });
 }
 
-module.exports = { iniciarScheduler };
+module.exports = { iniciarScheduler, dispararMensagemGrupo, enviarNoGrupo };
