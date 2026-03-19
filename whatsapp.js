@@ -11,9 +11,7 @@ function formatarTelefone(telefone) {
 async function enviarViaGateway(telefone, mensagem, nome, imediato = false) {
     const url = process.env.GATEWAY_URL;
     const token = process.env.GATEWAY_TOKEN;
-
     if (!url || !token) throw new Error('GATEWAY_URL ou GATEWAY_TOKEN não configurados');
-
     await axios.post(
         `${url}/enviar`,
         { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato },
@@ -56,7 +54,7 @@ class WhatsAppNotifier {
             await enviarViaGateway(numeroFinal, mensagem, cliente.nome, true);
             console.log(`✅ Resultado enviado para ${cliente.nome} (${numeroFinal})`);
 
-            // Registra lead no banco
+            // Registra lead com status aguardando_convite
             try {
                 const { registrarLead } = require('./db');
                 await registrarLead(uid, cliente.nome, numeroFinal, null);
@@ -69,10 +67,18 @@ class WhatsAppNotifier {
             console.log(`⏳ Convite agendado para ${cliente.nome} em 15 minutos`);
             setTimeout(async () => {
                 try {
-                    const config = require('./config');
+                    const { getMensagemConfig, atualizarStatusLead } = require('./db');
+                    const textoConvite = await getMensagemConfig('convite');
+                    if (!textoConvite) {
+                        console.error('❌ Mensagem de convite não encontrada no banco');
+                        return;
+                    }
                     const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(cliente.nome)}&ref=${encodeURIComponent(numeroFinal)}`;
-                    const convite = config.mensagens.convite(cliente.nome, link);
-                    await enviarViaGateway(numeroFinal, convite, cliente.nome, false); // via fila
+                    const mensagemConvite = textoConvite
+                        .replace(/\{nome\}/gi, cliente.nome)
+                        .replace(/\{link\}/gi, link);
+                    await enviarViaGateway(numeroFinal, mensagemConvite, cliente.nome, false);
+                    await atualizarStatusLead(uid, 'convite_enviado');
                     console.log(`✅ Convite enviado para ${cliente.nome} (${numeroFinal})`);
                 } catch (err) {
                     console.error(`❌ Erro ao enviar convite para ${cliente.nome}:`, err.message);
