@@ -36,6 +36,7 @@ class WhatsAppNotifier {
     }
 
     // ── RESULTADO DO TESTE — IMEDIATO (pula a fila) ──
+    // Após enviar o resultado, registra o lead e agenda o convite em 15 minutos
     async enviarMensagemAprovacao(uid) {
         try {
             console.log(`📱 WhatsApp iniciando para UID: ${uid}`);
@@ -53,7 +54,31 @@ class WhatsAppNotifier {
 
             // imediato = true — pessoa acabou de pagar, não pode esperar fila
             await enviarViaGateway(numeroFinal, mensagem, cliente.nome, true);
-            console.log(`✅ WhatsApp enviado para ${cliente.nome} (${numeroFinal})`);
+            console.log(`✅ Resultado enviado para ${cliente.nome} (${numeroFinal})`);
+
+            // Registra lead no banco
+            try {
+                const { registrarLead } = require('./db');
+                await registrarLead(uid, cliente.nome, numeroFinal, null);
+            } catch (err) {
+                console.error('❌ Erro ao registrar lead:', err.message);
+            }
+
+            // Agenda convite em 15 minutos (via fila)
+            const QUINZE_MIN = 15 * 60 * 1000;
+            console.log(`⏳ Convite agendado para ${cliente.nome} em 15 minutos`);
+            setTimeout(async () => {
+                try {
+                    const config = require('./config');
+                    const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(cliente.nome)}&ref=${encodeURIComponent(numeroFinal)}`;
+                    const convite = config.mensagens.convite(cliente.nome, link);
+                    await enviarViaGateway(numeroFinal, convite, cliente.nome, false); // via fila
+                    console.log(`✅ Convite enviado para ${cliente.nome} (${numeroFinal})`);
+                } catch (err) {
+                    console.error(`❌ Erro ao enviar convite para ${cliente.nome}:`, err.message);
+                }
+            }, QUINZE_MIN);
+
         } catch (error) {
             console.error('❌ Erro WhatsApp:', error.message);
         }
