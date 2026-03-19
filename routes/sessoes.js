@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const config = require('../config');
-const { salvarSessaoAgendada, registrarMensagem } = require('../db');
+const { salvarSessaoAgendada, registrarMensagem, getMensagemConfig, marcarLeadConfirmadoPorTelefone } = require('../db');
 
 function proximoSabado() {
     const hoje = new Date();
@@ -20,15 +19,14 @@ function formatarDataPtBR(data) {
     return `Sábado, ${data.getDate()} de ${meses[data.getMonth()]}`;
 }
 
-async function enviarWhatsApp(telefone, mensagem) {
-    const evolutionUrl = process.env.EVOLUTION_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    const instance = process.env.EVOLUTION_INSTANCE;
-    const instanceEncoded = encodeURIComponent(instance);
+async function enviarViaGateway(telefone, mensagem, nome) {
+    const url = process.env.GATEWAY_URL;
+    const token = process.env.GATEWAY_TOKEN;
+    if (!url || !token) throw new Error('GATEWAY_URL ou GATEWAY_TOKEN não configurados');
     await axios.post(
-        `${evolutionUrl}/message/sendText/${instanceEncoded}`,
-        { number: telefone, text: mensagem },
-        { headers: { 'apikey': apiKey, 'Content-Type': 'application/json' } }
+        `${url}/enviar`,
+        { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato: false },
+        { headers: { 'x-gateway-token': token, 'Content-Type': 'application/json' }, timeout: 10000 }
     );
 }
 
@@ -47,25 +45,42 @@ router.post('/agendar-sessao', async (req, res) => {
         const dataFormatada = formatarDataPtBR(sabado);
         const dataSessaoISO = sabado.toISOString().split('T')[0];
 
-        // 1. Salvar no banco
+        // 1. Salvar sessão no banco
         const sessaoId = await salvarSessaoAgendada(nome, numeroFinal, dataSessaoISO);
 
-        // 2. WhatsApp de confirmação imediato
+        // 2. Marcar lead como confirmado
         try {
-            await enviarWhatsApp(numeroFinal, config.mensagens.confirmacao(nome, dataFormatada));
+            await marcarLeadConfirmadoPorTelefone(numeroFinal);
+        } catch (err) {
+            console.error('❌ Erro ao marcar lead confirmado:', err.message);
+        }
+
+        // 3. Mensagem de confirmação via gateway (fila)
+        try {
+            const grupoLink = process.env.GRUPO_SESSAO_LINK || 'https://chat.whatsapp.com/F9XSTevtPPO6gvSxvevXvW?mode=gi_t';
+            let textoConfirmacao = await getMensagemConfig('confirmacao');
+            if (!textoConfirmacao) {
+                textoConfirmacao = `Olá, {nome}! 🎉\n\nSua vaga na Sessão de Diagnóstico está confirmada!\n\n📅 Sábado às 14h\n\nEntre no grupo da sessão:\n👉 {grupo_link}\n\nAté sábado! 🌟\n— Suellen Seragi`;
+            }
+            const mensagem = textoConfirmacao
+                .replace(/\{nome\}/gi, nome)
+                .replace(/\{grupo_link\}/gi, grupoLink)
+                .replace(/\{data\}/gi, dataFormatada);
+
+            await enviarViaGateway(numeroFinal, mensagem, nome);
             await registrarMensagem(sessaoId, 'sessoes_agendadas', 'confirmacao');
-            console.log(`✅ Confirmação enviada para ${nome}`);
+            console.log(`✅ Confirmação enfileirada para ${nome}`);
         } catch (err) {
             console.error('❌ Erro confirmação WhatsApp:', err.message);
         }
 
-        // 3. Pushover
+        // 4. Pushover
         try {
             await axios.post('https://api.pushover.net/1/messages.json', {
                 token: 'axfum4x76e38hzuuxjrkb3sh2febbw',
                 user: process.env.PUSHOVER_USER_KEY,
                 title: '🗓️ Nova Sessão Confirmada!',
-                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 ${dataFormatada} às 14h\n📱 ${telefone}`
+                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 ${dataFormatada} às 14h\n📱 ${numeroFinal}`
             });
         } catch (err) {
             console.error('❌ Erro Pushover:', err.message);
@@ -74,7 +89,7 @@ router.post('/agendar-sessao', async (req, res) => {
         return res.status(200).json({
             success: true,
             nome,
-            telefone,
+            telefone: numeroFinal,
             data: `${dataFormatada} às 14h`
         });
 
