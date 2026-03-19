@@ -340,6 +340,7 @@
         <td>${fmt(s.confirmado_em)}</td>
         <td>
           <div class="action-row">
+            <button class="btn btn-success" onclick="enviarManual('${esc(s.nome)}','${esc(s.telefone)}','confirmacao')">🔗 Link do grupo</button>
             <button class="btn btn-danger" onclick="deletarSessao(${s.id},'${esc(s.nome)}')">🗑️</button>
           </div>
         </td>
