@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { getMensagemConfig } = require('./db');
 const { emitir, EVENTOS } = require('./monitor-events');
-const axios = require('axios');
+const { enviarViaGateway } = require('./whatsapp');
 
 const GRUPO_SESSAO_JID = process.env.GRUPO_SESSAO_JID || '120363423552674236@g.us';
 
@@ -13,24 +13,15 @@ const HORARIOS = {
     sabado_15min: '45 13 * * 6',  // Sábado às 13h45
 };
 
-// ── ENVIAR MENSAGEM PARA O GRUPO VIA EVOLUTION API ──
+// ── ENVIAR MENSAGEM PARA O GRUPO VIA GATEWAY (fila) ──
 async function enviarNoGrupo(mensagem, origem) {
-    const evolutionUrl = process.env.EVOLUTION_URL;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    const instance = encodeURIComponent(process.env.EVOLUTION_INSTANCE);
-
     try {
-        await axios.post(
-            `${evolutionUrl}/message/sendText/${instance}`,
-            { number: GRUPO_SESSAO_JID, text: mensagem },
-            { headers: { apikey: apiKey, 'Content-Type': 'application/json' }, timeout: 10000 }
-        );
-        console.log(`✅ Mensagem enviada no grupo (${origem})`);
+        await enviarViaGateway(GRUPO_SESSAO_JID, mensagem, 'Grupo Sessão', false);
+        console.log(`✅ Mensagem enfileirada para o grupo (${origem})`);
         emitir(EVENTOS.ENVIO_SUCESSO, { job: origem, nome: 'Grupo Sessão', telefone: GRUPO_SESSAO_JID });
     } catch (err) {
-        const detalhe = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-        console.error(`❌ Erro ao enviar no grupo (${origem}): ${detalhe}`);
-        emitir(EVENTOS.ENVIO_ERRO, { job: origem, erro: detalhe });
+        console.error(`❌ Erro ao enfileirar mensagem do grupo (${origem}): ${err.message}`);
+        emitir(EVENTOS.ENVIO_ERRO, { job: origem, erro: err.message });
     }
 }
 
