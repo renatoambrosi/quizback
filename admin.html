@@ -347,13 +347,19 @@
       let badgeGrupo = '<span class="badge badge-gray">—</span>';
       if (participantesGrupo !== null) {
         const tel = (s.telefone || '').replace(/\D/g, '');
-        // Normaliza: remove 55 para comparar apenas DDD+número
-        const telSem55 = tel.startsWith('55') ? tel.slice(2) : tel;
-        const noGrupo = participantesGrupo.some(p => {
-          const pLimpo = p.replace(/\D/g, '');
-          const pSem55 = pLimpo.startsWith('55') ? pLimpo.slice(2) : pLimpo;
-          return pLimpo === tel || pSem55 === telSem55 || pLimpo === telSem55 || pSem55 === tel;
-        });
+
+        // A Evolution remove o 9 extra automaticamente ao enviar
+        // Participantes no grupo ficam registrados sem o 9
+        // Ex: 5561982741202 → 556182741202 no grupo
+        function normalizar(n) {
+          let s = n.replace(/\D/g, '');
+          if (s.startsWith('55')) s = s.slice(2); // remove 55
+          if (s.length === 11 && s[2] === '9') s = s.slice(0, 2) + s.slice(3); // remove 9 extra
+          return s; // resultado: DDD + 8 dígitos
+        }
+
+        const telNorm = normalizar(tel);
+        const noGrupo = participantesGrupo.some(p => normalizar(p) === telNorm);
         badgeGrupo = noGrupo
           ? '<span class="badge badge-green">✓ No grupo</span>'
           : '<span class="badge badge-yellow">⚠️ Fora</span>';
