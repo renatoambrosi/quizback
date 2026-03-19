@@ -11,6 +11,25 @@ const whatsappNotifier = new WhatsAppNotifier();
 const { agendarEnvio } = require('../db');
 
 // ============================================
+// LOCK EM MEMÓRIA — evita envio duplicado
+// O MP pode disparar payment.created E payment.updated
+// para o mesmo pagamento. O lock bloqueia o segundo.
+// ============================================
+const uidProcessados = new Map();
+const JANELA_LOCK_MS = 5 * 60 * 1000; // 5 minutos
+
+function jaProcessou(uid) {
+    const agora = Date.now();
+    if (uidProcessados.has(uid)) {
+        const ts = uidProcessados.get(uid);
+        if (agora - ts < JANELA_LOCK_MS) return true; // dentro da janela → duplicado
+        uidProcessados.delete(uid); // janela expirou → limpa e processa
+    }
+    uidProcessados.set(uid, agora);
+    return false;
+}
+
+// ============================================
 // CONFIGURAÇÃO OFICIAL MERCADO PAGO
 // ============================================
 
@@ -330,41 +349,47 @@ router.post('/webhook', async (req, res) => {
                 });
 
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
-                    const customerEmail = paymentDetails.metadata?.customer_email;
-                    await emailSender.sendPixSuccessEmail(customerEmail, paymentDetails.external_reference);
+                    const uid = paymentDetails.external_reference;
 
-                    // Notificação WhatsApp
-                    try {
-                        await whatsappNotifier.enviarMensagemAprovacao(paymentDetails.external_reference);
-                    } catch (error) {
-                        console.error('❌ Erro WhatsApp PIX:', error);
-                    }
+                    if (jaProcessou(uid)) {
+                        console.log(`⚠️ UID ${uid} já processado nos últimos 5min — webhook duplicado ignorado`);
+                    } else {
+                        const customerEmail = paymentDetails.metadata?.customer_email;
+                        await emailSender.sendPixSuccessEmail(customerEmail, uid);
 
-                    // Agendamento segundo WhatsApp (24h)
-                    try {
-                        const cliente = await whatsappNotifier.buscarCliente(paymentDetails.external_reference);
-                        if (cliente) {
-                            const numero = String(cliente.telefone).replace(/\D/g, '');
-                            const numeroFinal = numero.startsWith('55') ? numero : numero.startsWith('0') ? `55${numero.slice(1)}` : `55${numero}`;
-                            const customerEmail = paymentDetails.metadata?.customer_email; // ← adiciona isso
-                            await agendarEnvio(paymentDetails.external_reference, cliente.nome, numeroFinal, customerEmail); // ← passa email
+                        // Notificação WhatsApp
+                        try {
+                            await whatsappNotifier.enviarMensagemAprovacao(uid);
+                        } catch (error) {
+                            console.error('❌ Erro WhatsApp PIX:', error);
                         }
-                    } catch (error) {
-                        console.error('❌ Erro ao agendar segundo WhatsApp:', error);
-                    }
 
-                    // Notificação Pushover
-                    try {
-                        await pushoverNotifier.sendPixApprovedNotification(paymentDetails);
-                    } catch (error) {
-                        console.error('❌ Erro Pushover PIX:', error);
-                    }
+                        // Agendamento segundo WhatsApp (24h)
+                        try {
+                            const cliente = await whatsappNotifier.buscarCliente(uid);
+                            if (cliente) {
+                                const numero = String(cliente.telefone).replace(/\D/g, '');
+                                const numeroFinal = numero.startsWith('55') ? numero : numero.startsWith('0') ? `55${numero.slice(1)}` : `55${numero}`;
+                                const customerEmail = paymentDetails.metadata?.customer_email;
+                                await agendarEnvio(uid, cliente.nome, numeroFinal, customerEmail);
+                            }
+                        } catch (error) {
+                            console.error('❌ Erro ao agendar segundo WhatsApp:', error);
+                        }
 
-                    logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
-                        uid: paymentDetails.external_reference,
-                        transaction_amount: paymentDetails.transaction_amount,
-                        date_approved: paymentDetails.date_approved
-                    });
+                        // Notificação Pushover
+                        try {
+                            await pushoverNotifier.sendPixApprovedNotification(paymentDetails);
+                        } catch (error) {
+                            console.error('❌ Erro Pushover PIX:', error);
+                        }
+
+                        logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
+                            uid: uid,
+                            transaction_amount: paymentDetails.transaction_amount,
+                            date_approved: paymentDetails.date_approved
+                        });
+                    }
                 }
 
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_type_id === 'credit_card') {
