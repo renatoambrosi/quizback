@@ -16,13 +16,13 @@
     .tab.active { background: #faf8f2; color: #2d2a1e; font-weight: 700; }
     .content { padding: 20px; }
     .stats { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-    .stat-card { background: white; border: 1px solid #e8e3d0; border-radius: 10px; padding: 14px 20px; min-width: 120px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .stat-card { background: white; border: 1px solid #e8e3d0; border-radius: 10px; padding: 14px 20px; min-width: 120px; text-align: center; }
     .stat-card .num { font-size: 1.8rem; font-weight: 700; color: #9b8732; }
     .stat-card .lbl { font-size: 0.72rem; color: #9a9480; margin-top: 2px; }
     .panel { display: none; }
     .panel.active { display: block; }
-    .card { background: white; border: 1px solid #e8e3d0; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px; }
-    .card-header { padding: 14px 20px; font-weight: 700; font-size: 0.9rem; background: #f5f2e8; border-bottom: 1px solid #e8e3d0; display: flex; justify-content: space-between; align-items: center; }
+    .card { background: white; border: 1px solid #e8e3d0; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .card-header { padding: 14px 20px; font-weight: 700; font-size: 0.9rem; background: #f5f2e8; border-bottom: 1px solid #e8e3d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
     th { background: #f5f2e8; padding: 10px 12px; text-align: left; font-weight: 600; color: #6b6347; border-bottom: 1px solid #e8e3d0; white-space: nowrap; }
     td { padding: 10px 12px; border-bottom: 1px solid #f0ece0; vertical-align: middle; }
@@ -35,31 +35,42 @@
     .btn-danger { background: #c62828; color: white; }
     .btn-success { background: #2e7d32; color: white; }
     .btn-gray { background: #9a9480; color: white; }
+    .btn-blue { background: #1565c0; color: white; }
     .btn-add { background: #9b8732; color: white; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.78rem; font-weight: 600; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; }
     .badge-green { background: #e8f5e9; color: #2e7d32; }
     .badge-yellow { background: #fff8e1; color: #9b8732; }
-    .badge-gray { background: #f0ece0; color: #6b6347; }
     .badge-blue { background: #e3f2fd; color: #1565c0; }
+    .badge-gray { background: #f0ece0; color: #6b6347; }
     .action-row { display: flex; gap: 6px; flex-wrap: wrap; }
-    input[type=text], input[type=date], input[type=email] { border: 1px solid #d5cdb8; border-radius: 4px; padding: 4px 8px; font-size: 0.78rem; width: 100%; }
     .semana-header { background: #f5f2e8; padding: 10px 16px; font-weight: 700; font-size: 0.85rem; color: #6b6347; border-bottom: 1px solid #e8e3d0; }
-    .toast { position: fixed; bottom: 24px; right: 24px; background: #2d2a1e; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.82rem; z-index: 9999; transition: opacity 0.3s; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #2d2a1e; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.82rem; z-index: 9999; }
     .toast.error { background: #c62828; }
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.show { display: flex; }
-    .modal { background: white; border-radius: 12px; padding: 24px; width: 400px; max-width: 95vw; }
+    .modal { background: white; border-radius: 12px; padding: 24px; width: 420px; max-width: 95vw; }
     .modal h3 { margin-bottom: 16px; font-size: 1rem; }
     .field { margin-bottom: 12px; }
     .field label { display: block; font-size: 0.78rem; color: #6b6347; margin-bottom: 4px; font-weight: 600; }
+    .field input, .field textarea { border: 1px solid #d5cdb8; border-radius: 4px; padding: 6px 10px; font-size: 0.82rem; width: 100%; font-family: inherit; }
+    .field textarea { resize: vertical; }
     .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-
+    /* Mensagens */
+    .msg-card { border: 1px solid #e8e3d0; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+    .msg-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; }
+    .msg-titulo { font-weight: 700; font-size: 0.88rem; color: #2d2a1e; }
+    .msg-chave { font-size: 0.72rem; color: #9a9480; font-family: monospace; margin-top: 2px; }
+    .msg-footer { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.7rem; color: #9a9480; }
+    .msg-textarea { width: 100%; border: 1px solid #d5cdb8; border-radius: 4px; padding: 8px; font-size: 0.82rem; font-family: inherit; resize: vertical; }
+    .grupo-disparos { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e3d0; }
+    .grupo-livre { padding: 16px 20px; }
+    .grupo-livre textarea { width: 100%; border: 1px solid #d5cdb8; border-radius: 6px; padding: 10px; font-size: 0.85rem; font-family: inherit; resize: vertical; margin-bottom: 10px; }
     /* Expedição */
     .fila-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block; margin-right: 6px; }
     .fila-dot.conectado { background: #2e7d32; }
     .fila-dot.enviando { background: #9b8732; animation: pulse 1s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-    .fila-status { font-size: 0.75rem; color: #9a9480; margin-bottom: 12px; display: flex; align-items: center; }
+    .fila-status { font-size: 0.75rem; color: #9a9480; padding: 8px 16px; display: flex; align-items: center; }
     .fila-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #f0ece0; }
     .fila-item:last-child { border-bottom: none; }
     .fila-pos { width: 28px; height: 28px; border-radius: 50%; background: #f0ece0; color: #6b6347; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0; }
@@ -72,13 +83,12 @@
     .fila-aguardando { display: none; align-items: center; gap: 8px; padding: 8px 16px; background: #fff8e1; font-size: 0.78rem; color: #9b8732; }
     .hist-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #f0ece0; font-size: 0.78rem; }
     .hist-item:last-child { border-bottom: none; }
-    .hist-ok { color: #2e7d32; font-weight: 700; font-size: 0.7rem; }
-    .hist-err { color: #c62828; font-weight: 700; font-size: 0.7rem; }
+    .hist-ok { color: #2e7d32; font-weight: 700; }
+    .hist-err { color: #c62828; font-weight: 700; }
     .hist-info { flex: 1; min-width: 0; }
     .hist-nome { font-weight: 600; }
     .hist-preview { color: #9a9480; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hist-ts { font-size: 0.68rem; color: #9a9480; flex-shrink: 0; }
-    #filaContador { font-size: 0.75rem; color: #9a9480; }
   </style>
 </head>
 <body>
@@ -93,12 +103,15 @@
   <button class="tab" onclick="showTab('sessoes', this)">✅ Confirmados</button>
   <button class="tab" onclick="showTab('cancelados', this)">❌ Cancelados</button>
   <button class="tab" onclick="showTab('passados', this)">📦 Passados</button>
+  <button class="tab" onclick="showTab('mensagens', this)">📨 Mensagens</button>
   <button class="tab" onclick="showTab('expedicao', this)">🚚 Expedição <span id="fila-badge" style="display:none;background:#9b8732;color:white;border-radius:10px;padding:1px 6px;font-size:0.65rem;margin-left:4px">0</span></button>
 </div>
 
 <div class="content">
   <div class="stats">
     <div class="stat-card"><div class="num" id="statLeads">—</div><div class="lbl">Total leads</div></div>
+    <div class="stat-card"><div class="num" id="statAguardando">—</div><div class="lbl">Aguardando convite</div></div>
+    <div class="stat-card"><div class="num" id="statConviteEnviado">—</div><div class="lbl">Convite enviado</div></div>
     <div class="stat-card"><div class="num" id="statConfirmados">—</div><div class="lbl">Confirmados</div></div>
     <div class="stat-card"><div class="num" id="statCancelados">—</div><div class="lbl">Cancelados</div></div>
     <div class="stat-card"><div class="num" id="statPassados">—</div><div class="lbl">Passados</div></div>
@@ -109,7 +122,7 @@
     <div class="card">
       <div class="card-header">
         Leads — todos que receberam o resultado
-        <button class="btn-add" onclick="abrirModalAdicionar('lead')">➕ Adicionar lead</button>
+        <button class="btn-add" onclick="abrirModalAdicionar('lead')">➕ Adicionar</button>
       </div>
       <div style="overflow-x:auto">
         <table>
@@ -127,7 +140,7 @@
     <div class="card">
       <div class="card-header">
         Confirmados na Sessão de Diagnóstico
-        <button class="btn-add" onclick="abrirModalAdicionar('sessao')">➕ Adicionar confirmado</button>
+        <button class="btn-add" onclick="abrirModalAdicionar('sessao')">➕ Adicionar</button>
       </div>
       <div style="overflow-x:auto">
         <table>
@@ -160,14 +173,40 @@
     <div id="containerPassados"><p class="empty">Carregando...</p></div>
   </div>
 
+  <!-- MENSAGENS -->
+  <div id="panel-mensagens" class="panel">
+
+    <!-- Disparos para o grupo -->
+    <div class="card">
+      <div class="card-header">📢 Disparos para o Grupo — Teste</div>
+      <div class="grupo-disparos">
+        <button class="btn btn-primary" onclick="dispararGrupo('quarta')">📅 Quarta</button>
+        <button class="btn btn-primary" onclick="dispararGrupo('sexta')">📅 Sexta</button>
+        <button class="btn btn-primary" onclick="dispararGrupo('sabado_1h')">⏰ Sábado 1h</button>
+        <button class="btn btn-primary" onclick="dispararGrupo('sabado_15min')">⏰ Sábado 15min</button>
+      </div>
+      <div class="grupo-livre">
+        <label style="font-size:0.82rem;font-weight:600;color:#6b6347;display:block;margin-bottom:6px">✉️ Mensagem livre para o grupo</label>
+        <textarea id="msgLivre" rows="4" placeholder="Digite qualquer mensagem para enviar ao grupo agora..."></textarea>
+        <button class="btn btn-success" onclick="enviarMsgLivre()">📤 Enviar ao grupo</button>
+      </div>
+    </div>
+
+    <!-- Editor de mensagens -->
+    <div class="card">
+      <div class="card-header">✏️ Editor de Mensagens</div>
+      <div style="padding:16px" id="msgEditor">Carregando...</div>
+    </div>
+  </div>
+
   <!-- EXPEDIÇÃO -->
   <div id="panel-expedicao" class="panel">
     <div class="card">
       <div class="card-header">
         <span>🚚 Fila de Envio — Gateway</span>
-        <span id="filaContador">Fila: 0</span>
+        <span id="filaContador" style="font-size:0.75rem;color:#9a9480">Fila: 0</span>
       </div>
-      <div class="fila-status" style="padding: 8px 16px;">
+      <div class="fila-status">
         <span class="fila-dot" id="filaDot"></span>
         <span id="filaStatusTxt">Conectando...</span>
       </div>
@@ -235,6 +274,12 @@
 
   function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+  function badgeStatus(status) {
+    if (status === 'confirmado') return '<span class="badge badge-green">✓ Confirmado</span>';
+    if (status === 'convite_enviado') return '<span class="badge badge-blue">📨 Convite enviado</span>';
+    return '<span class="badge badge-yellow">⏳ Aguardando convite</span>';
+  }
+
   async function carregarDados() {
     try {
       const resp = await fetch('/admin/dados');
@@ -243,7 +288,9 @@
       dadosGlobais = data;
 
       document.getElementById('statLeads').textContent = data.leads.length;
-      document.getElementById('statConfirmados').textContent = data.sessoes.length;
+      document.getElementById('statAguardando').textContent = data.leads.filter(l => l.status === 'aguardando_convite').length;
+      document.getElementById('statConviteEnviado').textContent = data.leads.filter(l => l.status === 'convite_enviado').length;
+      document.getElementById('statConfirmados').textContent = data.leads.filter(l => l.status === 'confirmado').length;
       document.getElementById('statCancelados').textContent = data.cancelados.length;
       document.getElementById('statPassados').textContent = data.passados.length;
       document.getElementById('lastUpdate').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
@@ -252,6 +299,7 @@
       renderSessoes(data);
       renderCancelados(data);
       renderPassados(data);
+      renderMensagens(data);
     } catch (err) {
       showToast('Erro ao carregar dados', true);
     }
@@ -266,14 +314,15 @@
         <td>${esc(l.nome)}</td>
         <td>${esc(l.telefone)}</td>
         <td>${esc(l.email || '—')}</td>
-        <td>${l.confirmado ? '<span class="badge badge-green">✓ Confirmado</span>' : '<span class="badge badge-yellow">Aguardando</span>'}</td>
+        <td>${badgeStatus(l.status)}</td>
         <td>${fmt(l.criado_em)}</td>
         <td>
           <div class="action-row">
             <button class="btn btn-primary" onclick="enviarManual('${esc(l.nome)}','${esc(l.telefone)}','convite')">📨 Convite</button>
+            <button class="btn btn-blue" onclick="enviarManual('${esc(l.nome)}','${esc(l.telefone)}','reconvite')">🔁 Reconvite</button>
             <button class="btn btn-success" onclick="enviarManual('${esc(l.nome)}','${esc(l.telefone)}','confirmacao')">✅ Confirmação</button>
-            <button class="btn btn-gray" onclick="moverPassado(${l.id},'${esc(l.nome)}')">📦 Passados</button>
-            <button class="btn btn-danger" onclick="cancelar(${l.id},'${esc(l.nome)}')">✕ Cancelar</button>
+            <button class="btn btn-gray" onclick="moverPassado(${l.id},'${esc(l.nome)}')">📦</button>
+            <button class="btn btn-danger" onclick="cancelar(${l.id},'${esc(l.nome)}')">✕</button>
           </div>
         </td>
       </tr>`).join('');
@@ -291,7 +340,7 @@
         <td>${fmt(s.confirmado_em)}</td>
         <td>
           <div class="action-row">
-            <button class="btn btn-danger" onclick="deletarSessao(${s.id},'${esc(s.nome)}')">🗑️ Deletar</button>
+            <button class="btn btn-danger" onclick="deletarSessao(${s.id},'${esc(s.nome)}')">🗑️</button>
           </div>
         </td>
       </tr>`).join('');
@@ -310,7 +359,7 @@
         <td>
           <div class="action-row">
             <button class="btn btn-success" onclick="reativarCancelado(${c.id},'${esc(c.nome)}')">♻️ Reativar</button>
-            <button class="btn btn-danger" onclick="deletarCancelado(${c.id},'${esc(c.nome)}')">🗑️ Deletar</button>
+            <button class="btn btn-danger" onclick="deletarCancelado(${c.id},'${esc(c.nome)}')">🗑️</button>
           </div>
         </td>
       </tr>`).join('');
@@ -321,11 +370,7 @@
     const container = document.getElementById('containerPassados');
     if (!passados.length) { container.innerHTML = '<p class="empty">Nenhum passado</p>'; return; }
     const porSemana = {};
-    passados.forEach(p => {
-      const s = p.semana || 'sem-data';
-      if (!porSemana[s]) porSemana[s] = [];
-      porSemana[s].push(p);
-    });
+    passados.forEach(p => { const s = p.semana || 'sem-data'; if (!porSemana[s]) porSemana[s] = []; porSemana[s].push(p); });
     container.innerHTML = Object.entries(porSemana).map(([semana, lista]) => `
       <div class="card" style="margin-bottom:12px">
         <div class="semana-header">${fmtSemana(semana)}</div>
@@ -340,7 +385,7 @@
                 <td>
                   <div class="action-row">
                     <button class="btn btn-success" onclick="reativarPassado(${p.id},'${esc(p.nome)}')">♻️ Reativar</button>
-                    <button class="btn btn-danger" onclick="deletarPassado(${p.id},'${esc(p.nome)}')">🗑️ Deletar</button>
+                    <button class="btn btn-danger" onclick="deletarPassado(${p.id},'${esc(p.nome)}')">🗑️</button>
                   </div>
                 </td>
               </tr>`).join('')}
@@ -350,10 +395,32 @@
       </div>`).join('');
   }
 
+  // ── MENSAGENS ──
+  function renderMensagens({ mensagensConfig }) {
+    const el = document.getElementById('msgEditor');
+    if (!mensagensConfig || !mensagensConfig.length) { el.innerHTML = '<p style="color:#9a9480">Nenhuma mensagem configurada</p>'; return; }
+    el.innerHTML = mensagensConfig.map(m => `
+      <div class="msg-card">
+        <div class="msg-header">
+          <div>
+            <div class="msg-titulo">${esc(m.titulo)}</div>
+            <div class="msg-chave">${esc(m.chave)}</div>
+          </div>
+          <button class="btn btn-primary" onclick="salvarMensagem('${m.chave}')">💾 Salvar</button>
+        </div>
+        <textarea class="msg-textarea" id="msg-${m.chave}" rows="5">${esc(m.texto)}</textarea>
+        <div class="msg-footer">
+          <span>Use {nome}, {link}, {grupo_link}, {meet_link} conforme o tipo</span>
+          <span>Atualizado: ${fmt(m.atualizado_em)}</span>
+        </div>
+      </div>`).join('');
+  }
+
   // ── AÇÕES ──
 
   async function enviarManual(nome, telefone, etapa) {
-    if (!confirm(`Enviar "${etapa}" para ${nome}?`)) return;
+    const labels = { convite: 'convite', reconvite: 'reconvite', confirmacao: 'confirmação' };
+    if (!confirm(`Enviar ${labels[etapa] || etapa} para ${nome}?`)) return;
     try {
       const resp = await fetch('/admin/enviar', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -363,6 +430,39 @@
       if (d.success) showToast(`⏳ Na fila para ${nome}`);
       else showToast(d.error || 'Erro', true);
     } catch { showToast('Erro de conexão', true); }
+  }
+
+  async function salvarMensagem(chave) {
+    const texto = document.getElementById('msg-' + chave).value;
+    try {
+      const r = await fetch(`/admin/mensagem/${chave}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }) });
+      const d = await r.json();
+      if (d.success) showToast('✅ Mensagem salva!');
+      else showToast(d.error || 'Erro', true);
+    } catch { showToast('Erro ao salvar', true); }
+  }
+
+  async function dispararGrupo(chave) {
+    const labels = { quarta: 'Quarta', sexta: 'Sexta', sabado_1h: 'Sábado 1h antes', sabado_15min: 'Sábado 15min antes' };
+    if (!confirm(`Disparar mensagem "${labels[chave]}" no grupo agora?`)) return;
+    try {
+      const r = await fetch(`/admin/grupo/disparar/${chave}`, { method: 'POST' });
+      const d = await r.json();
+      if (d.success) showToast(`✅ Mensagem "${labels[chave]}" enviada ao grupo`);
+      else showToast(d.error || 'Erro', true);
+    } catch { showToast('Erro ao disparar', true); }
+  }
+
+  async function enviarMsgLivre() {
+    const mensagem = document.getElementById('msgLivre').value.trim();
+    if (!mensagem) { showToast('Digite uma mensagem antes de enviar', true); return; }
+    if (!confirm('Enviar esta mensagem ao grupo agora?')) return;
+    try {
+      const r = await fetch('/admin/grupo/livre', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagem }) });
+      const d = await r.json();
+      if (d.success) { showToast('✅ Mensagem enviada ao grupo!'); document.getElementById('msgLivre').value = ''; }
+      else showToast(d.error || 'Erro', true);
+    } catch { showToast('Erro ao enviar', true); }
   }
 
   async function cancelar(id, nome) {
@@ -377,7 +477,7 @@
     if (!confirm(`Mover ${nome} para Passados?`)) return;
     try {
       await fetch(`/admin/mover-passado/${id}`, { method: 'POST' });
-      showToast(`📦 ${nome} movido para passados`); carregarDados();
+      showToast(`📦 ${nome} movido`); carregarDados();
     } catch { showToast('Erro', true); }
   }
 
@@ -385,7 +485,7 @@
     if (!confirm(`Deletar confirmação de ${nome}?`)) return;
     try {
       await fetch(`/admin/sessao/${id}`, { method: 'DELETE' });
-      showToast(`🗑️ ${nome} removido dos confirmados`); carregarDados();
+      showToast(`🗑️ Removido`); carregarDados();
     } catch { showToast('Erro', true); }
   }
 
@@ -400,7 +500,7 @@
     if (!confirm(`Deletar ${nome} permanentemente?`)) return;
     try {
       await fetch(`/admin/cancelados/${id}`, { method: 'DELETE' });
-      showToast(`🗑️ ${nome} deletado`); carregarDados();
+      showToast(`🗑️ Deletado`); carregarDados();
     } catch { showToast('Erro', true); }
   }
 
@@ -415,7 +515,7 @@
     if (!confirm(`Deletar ${nome} permanentemente?`)) return;
     try {
       await fetch(`/admin/passado/${id}`, { method: 'DELETE' });
-      showToast(`🗑️ ${nome} deletado`); carregarDados();
+      showToast(`🗑️ Deletado`); carregarDados();
     } catch { showToast('Erro', true); }
   }
 
@@ -469,27 +569,18 @@
       const r = await fetch('/admin/fila');
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const dados = await r.json();
-
       dot.className = 'fila-dot conectado';
       txt.textContent = 'Gateway conectado — atualizando a cada 2s';
-
-      renderFilaLista(dados.fila, dados.processando);
+      renderFilaLista(dados.fila);
       renderFilaHistorico(dados.historico);
-
       const n = (dados.fila || []).length;
       const badge = document.getElementById('fila-badge');
-      if (n > 0) { badge.style.display = 'inline'; badge.textContent = n; }
-      else { badge.style.display = 'none'; }
+      if (n > 0) { badge.style.display = 'inline'; badge.textContent = n; } else { badge.style.display = 'none'; }
       document.getElementById('filaContador').textContent = `Fila: ${n}`;
-
       const aguardandoDiv = document.getElementById('filaAguardando');
-      if (dados.processando) {
-        aguardandoDiv.style.display = 'flex';
-        dot.className = 'fila-dot enviando';
-      } else {
-        aguardandoDiv.style.display = 'none';
-      }
-    } catch (err) {
+      if (dados.processando) { aguardandoDiv.style.display = 'flex'; dot.className = 'fila-dot enviando'; }
+      else { aguardandoDiv.style.display = 'none'; }
+    } catch {
       dot.className = 'fila-dot';
       txt.textContent = 'Gateway indisponível — tentando reconectar...';
     }
@@ -535,8 +626,8 @@
     if (!confirm('Cancelar mensagem para ' + nome + '?')) return;
     const r = await fetch('/admin/fila/' + id, { method: 'DELETE' });
     const d = await r.json();
-    if (d.success) showToast('Mensagem para ' + nome + ' cancelada');
-    else showToast(d.error || 'Erro ao cancelar', true);
+    if (d.success) showToast('Mensagem cancelada');
+    else showToast(d.error || 'Erro', true);
   }
 
   // ── INIT ──
