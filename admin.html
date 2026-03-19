@@ -269,7 +269,11 @@
 
   function fmtData(iso) {
     if (!iso) return '—';
-    return new Date(iso + 'T00:00:00').toLocaleDateString('pt-BR');
+    // Aceita tanto '2026-03-19' quanto '2026-03-19T00:00:00.000Z'
+    const s = String(iso).substring(0, 10);
+    const [y, m, d] = s.split('-');
+    if (!y || !m || !d) return '—';
+    return `${d}/${m}/${y}`;
   }
 
   function fmtSemana(iso) {
@@ -343,7 +347,13 @@
       let badgeGrupo = '<span class="badge badge-gray">—</span>';
       if (participantesGrupo !== null) {
         const tel = (s.telefone || '').replace(/\D/g, '');
-        const noGrupo = participantesGrupo.some(p => p.includes(tel) || tel.includes(p));
+        // Normaliza: remove 55 para comparar apenas DDD+número
+        const telSem55 = tel.startsWith('55') ? tel.slice(2) : tel;
+        const noGrupo = participantesGrupo.some(p => {
+          const pLimpo = p.replace(/\D/g, '');
+          const pSem55 = pLimpo.startsWith('55') ? pLimpo.slice(2) : pLimpo;
+          return pLimpo === tel || pSem55 === telSem55 || pLimpo === telSem55 || pSem55 === tel;
+        });
         badgeGrupo = noGrupo
           ? '<span class="badge badge-green">✓ No grupo</span>'
           : '<span class="badge badge-yellow">⚠️ Fora</span>';
