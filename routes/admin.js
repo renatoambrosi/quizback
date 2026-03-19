@@ -247,10 +247,12 @@ router.get('/admin/grupo/participantes', autenticar, async (req, res) => {
         );
 
         const participants = resp.data?.participants || [];
+        console.log('🔍 PARTICIPANTES RAW:', JSON.stringify(participants.slice(0, 5)));
         const numeros = participants.map(p => {
             const id = p.id || '';
             return id.replace('@s.whatsapp.net', '').replace('@c.us', '');
         });
+        console.log('🔍 PARTICIPANTES NORMALIZADOS:', JSON.stringify(numeros.slice(0, 5)));
 
         res.json({ success: true, participantes: numeros });
     } catch (err) {
