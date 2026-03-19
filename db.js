@@ -6,18 +6,19 @@ const pool = new Pool({
 
 async function initDb() {
     try {
+        // Tabela de leads — todos que pagaram e receberam o resultado
         await pool.query(`
-            CREATE TABLE IF NOT EXISTS whatsapp_agendados (
+            CREATE TABLE IF NOT EXISTS leads (
                 id SERIAL PRIMARY KEY,
-                uid VARCHAR(50) NOT NULL,
+                uid VARCHAR(50) NOT NULL UNIQUE,
                 nome VARCHAR(255),
                 telefone VARCHAR(20),
                 email VARCHAR(255),
-                enviar_em TIMESTAMP NOT NULL,
-                enviado BOOLEAN DEFAULT FALSE,
+                confirmado BOOLEAN DEFAULT FALSE,
                 criado_em TIMESTAMP DEFAULT NOW()
             )
         `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sessoes_agendadas (
                 id SERIAL PRIMARY KEY,
@@ -27,6 +28,7 @@ async function initDb() {
                 confirmado_em TIMESTAMP DEFAULT NOW()
             )
         `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS mensagens_enviadas (
                 id SERIAL PRIMARY KEY,
@@ -36,6 +38,7 @@ async function initDb() {
                 enviado_em TIMESTAMP DEFAULT NOW()
             )
         `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS cancelados (
                 id SERIAL PRIMARY KEY,
@@ -47,6 +50,7 @@ async function initDb() {
                 criado_em TIMESTAMP
             )
         `);
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS passados (
                 id SERIAL PRIMARY KEY,
@@ -58,21 +62,11 @@ async function initDb() {
                 criado_em TIMESTAMP DEFAULT NOW()
             )
         `);
-        console.log('✅ Banco de dados iniciado (whatsapp_agendados + sessoes_agendadas + mensagens_enviadas + cancelados + passados)');
+
+        console.log('✅ Banco de dados iniciado (leads + sessoes_agendadas + mensagens_enviadas + cancelados + passados)');
     } catch (error) {
         console.error('❌ Erro ao iniciar banco:', error.message);
     }
-}
-
-// ── CÁLCULO DO HORÁRIO DE ENVIO ──
-function calcularEnviarEm() {
-    const agora = new Date();
-    const hora = agora.getHours();
-    const base = new Date(agora);
-    if (hora >= 6) base.setDate(base.getDate() + 1);
-    base.setHours(13, 40, 0, 0);
-    if (base.getDay() === 0) base.setDate(base.getDate() + 1);
-    return base;
 }
 
 // ── SÁBADO VIGENTE ──
@@ -84,51 +78,107 @@ function proximoSabado() {
     return sabado.toISOString().split('T')[0];
 }
 
-// ── WHATSAPP_AGENDADOS ──
-async function agendarEnvio(uid, nome, telefone, email) {
+// ── LEADS ──
+
+async function registrarLead(uid, nome, telefone, email) {
     try {
-        const duplicata = await pool.query(
-            `SELECT 1 FROM whatsapp_agendados 
-             WHERE telefone = $1 
-             AND criado_em >= NOW() - INTERVAL '24 hours'`,
-            [telefone]
-        );
-        if (duplicata.rows.length > 0) {
-            console.log(`⚠️ Agendamento ignorado — telefone ${telefone} já registrado nas últimas 24h`);
-            return;
-        }
-        const enviarEm = calcularEnviarEm();
+        // Upsert — se o uid já existe, atualiza nome/telefone/email
         await pool.query(
-            `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em) VALUES ($1, $2, $3, $4, $5)`,
-            [uid, nome, telefone, email, enviarEm]
+            `INSERT INTO leads (uid, nome, telefone, email)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (uid) DO UPDATE SET nome = $2, telefone = $3, email = $4`,
+            [uid, nome, telefone, email]
         );
-        console.log(`📅 WhatsApp agendado para ${nome} em ${enviarEm}`);
+        console.log(`✅ Lead registrado: ${nome} (${uid})`);
     } catch (error) {
-        console.error('❌ Erro ao agendar envio:', error.message);
+        console.error('❌ Erro ao registrar lead:', error.message);
     }
 }
 
-async function buscarPendentes() {
+async function marcarLeadConfirmado(uid) {
     try {
-        const result = await pool.query(
-            `SELECT * FROM whatsapp_agendados WHERE enviar_em <= NOW() AND enviado = FALSE`
-        );
+        await pool.query(`UPDATE leads SET confirmado = TRUE WHERE uid = $1`, [uid]);
+        console.log(`✅ Lead ${uid} marcado como confirmado`);
+    } catch (error) {
+        console.error('❌ Erro ao marcar lead como confirmado:', error.message);
+    }
+}
+
+async function buscarLeadPorUid(uid) {
+    try {
+        const result = await pool.query(`SELECT * FROM leads WHERE uid = $1`, [uid]);
+        return result.rows[0] || null;
+    } catch (error) {
+        console.error('❌ Erro ao buscar lead:', error.message);
+        return null;
+    }
+}
+
+async function listarLeads() {
+    try {
+        const result = await pool.query(`SELECT * FROM leads ORDER BY criado_em DESC`);
         return result.rows;
     } catch (error) {
-        console.error('❌ Erro ao buscar pendentes:', error.message);
+        console.error('❌ Erro ao listar leads:', error.message);
         return [];
     }
 }
 
-async function marcarEnviado(id) {
+async function atualizarLead(id, campos) {
     try {
-        await pool.query(`UPDATE whatsapp_agendados SET enviado = TRUE WHERE id = $1`, [id]);
+        const sets = Object.keys(campos).map((k, i) => `${k} = $${i + 2}`).join(', ');
+        const valores = [id, ...Object.values(campos)];
+        await pool.query(`UPDATE leads SET ${sets} WHERE id = $1`, valores);
+        console.log(`✅ Lead ${id} atualizado`);
     } catch (error) {
-        console.error('❌ Erro ao marcar enviado:', error.message);
+        console.error('❌ Erro ao atualizar lead:', error.message);
+        throw error;
+    }
+}
+
+async function deletarLead(id) {
+    try {
+        await pool.query(`DELETE FROM leads WHERE id = $1`, [id]);
+        console.log(`🗑️ Lead ${id} deletado`);
+    } catch (error) {
+        console.error('❌ Erro ao deletar lead:', error.message);
+        throw error;
+    }
+}
+
+async function adicionarLead(uid, nome, telefone, email) {
+    try {
+        const result = await pool.query(
+            `INSERT INTO leads (uid, nome, telefone, email) VALUES ($1, $2, $3, $4) RETURNING id`,
+            [uid || `manual-${Date.now()}`, nome, telefone, email]
+        );
+        console.log(`✅ Lead ${nome} adicionado manualmente`);
+        return result.rows[0].id;
+    } catch (error) {
+        console.error('❌ Erro ao adicionar lead:', error.message);
+        throw error;
+    }
+}
+
+async function cancelarLead(id) {
+    try {
+        const lead = await pool.query(`SELECT * FROM leads WHERE id = $1`, [id]);
+        if (!lead.rows.length) throw new Error('Lead não encontrado');
+        const l = lead.rows[0];
+        await pool.query(
+            `INSERT INTO cancelados (uid, nome, telefone, email, criado_em) VALUES ($1, $2, $3, $4, $5)`,
+            [l.uid, l.nome, l.telefone, l.email, l.criado_em]
+        );
+        await pool.query(`DELETE FROM leads WHERE id = $1`, [id]);
+        console.log(`❌ Lead ${l.nome} cancelado`);
+    } catch (error) {
+        console.error('❌ Erro ao cancelar lead:', error.message);
+        throw error;
     }
 }
 
 // ── SESSOES_AGENDADAS ──
+
 async function salvarSessaoAgendada(nome, telefone, dataSessao) {
     try {
         const result = await pool.query(
@@ -157,7 +207,54 @@ async function buscarConfirmadosParaSabado() {
     }
 }
 
+async function listarSessoes() {
+    try {
+        const result = await pool.query(`SELECT * FROM sessoes_agendadas ORDER BY confirmado_em DESC`);
+        return result.rows;
+    } catch (error) {
+        console.error('❌ Erro ao listar sessoes:', error.message);
+        return [];
+    }
+}
+
+async function atualizarSessao(id, campos) {
+    try {
+        const sets = Object.keys(campos).map((k, i) => `${k} = $${i + 2}`).join(', ');
+        const valores = [id, ...Object.values(campos)];
+        await pool.query(`UPDATE sessoes_agendadas SET ${sets} WHERE id = $1`, valores);
+        console.log(`✅ Sessão ${id} atualizada`);
+    } catch (error) {
+        console.error('❌ Erro ao atualizar sessão:', error.message);
+        throw error;
+    }
+}
+
+async function deletarSessao(id) {
+    try {
+        await pool.query(`DELETE FROM sessoes_agendadas WHERE id = $1`, [id]);
+        console.log(`🗑️ Sessão ${id} deletada`);
+    } catch (error) {
+        console.error('❌ Erro ao deletar sessão:', error.message);
+        throw error;
+    }
+}
+
+async function adicionarSessao(nome, telefone, dataSessao) {
+    try {
+        const result = await pool.query(
+            `INSERT INTO sessoes_agendadas (nome, telefone, data_sessao) VALUES ($1, $2, $3) RETURNING id`,
+            [nome, telefone, dataSessao]
+        );
+        console.log(`✅ Sessão de ${nome} adicionada manualmente`);
+        return result.rows[0].id;
+    } catch (error) {
+        console.error('❌ Erro ao adicionar sessão:', error.message);
+        throw error;
+    }
+}
+
 // ── MENSAGENS_ENVIADAS ──
+
 async function registrarMensagem(referenciaId, tabelaOrigem, etapa) {
     try {
         await pool.query(
@@ -182,23 +279,17 @@ async function jaEnviou(referenciaId, tabelaOrigem, etapa) {
     }
 }
 
-// ── CANCELADOS ──
-async function cancelarLead(id) {
+async function listarMensagensEnviadas() {
     try {
-        const lead = await pool.query(`SELECT * FROM whatsapp_agendados WHERE id = $1`, [id]);
-        if (!lead.rows.length) throw new Error('Lead não encontrado');
-        const l = lead.rows[0];
-        await pool.query(
-            `INSERT INTO cancelados (uid, nome, telefone, email, criado_em) VALUES ($1, $2, $3, $4, $5)`,
-            [l.uid, l.nome, l.telefone, l.email, l.criado_em]
-        );
-        await pool.query(`DELETE FROM whatsapp_agendados WHERE id = $1`, [id]);
-        console.log(`❌ Lead ${l.nome} cancelado e movido para cancelados`);
+        const result = await pool.query(`SELECT * FROM mensagens_enviadas ORDER BY enviado_em DESC`);
+        return result.rows;
     } catch (error) {
-        console.error('❌ Erro ao cancelar lead:', error.message);
-        throw error;
+        console.error('❌ Erro ao listar mensagens:', error.message);
+        return [];
     }
 }
+
+// ── CANCELADOS ──
 
 async function listarCancelados() {
     try {
@@ -210,70 +301,51 @@ async function listarCancelados() {
     }
 }
 
-// Reativar cancelado → entra na semana vigente com enviado=TRUE (convite já feito)
 async function reativarCancelado(id) {
     try {
         const row = await pool.query(`SELECT * FROM cancelados WHERE id = $1`, [id]);
         if (!row.rows.length) throw new Error('Cancelado não encontrado');
         const c = row.rows[0];
-        const enviarEm = calcularEnviarEm();
         await pool.query(
-            `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em, enviado, criado_em)
-             VALUES ($1, $2, $3, $4, $5, TRUE, $6)`,
-            [c.uid || `reativado-${Date.now()}`, c.nome, c.telefone, c.email, enviarEm, c.criado_em || new Date()]
+            `INSERT INTO leads (uid, nome, telefone, email, criado_em)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (uid) DO NOTHING`,
+            [c.uid || `reativado-${Date.now()}`, c.nome, c.telefone, c.email, c.criado_em || new Date()]
         );
         await pool.query(`DELETE FROM cancelados WHERE id = $1`, [id]);
-        console.log(`♻️ Cancelado ${c.nome} reativado para semana vigente`);
+        console.log(`♻️ Cancelado ${c.nome} reativado`);
     } catch (error) {
         console.error('❌ Erro ao reativar cancelado:', error.message);
         throw error;
     }
 }
 
+async function deletarCancelado(id) {
+    try {
+        await pool.query(`DELETE FROM cancelados WHERE id = $1`, [id]);
+    } catch (error) {
+        console.error('❌ Erro ao deletar cancelado:', error.message);
+        throw error;
+    }
+}
+
 // ── PASSADOS ──
+
 async function moverParaPassados(id) {
     try {
-        const lead = await pool.query(`SELECT * FROM whatsapp_agendados WHERE id = $1`, [id]);
+        const lead = await pool.query(`SELECT * FROM leads WHERE id = $1`, [id]);
         if (!lead.rows.length) throw new Error('Lead não encontrado');
         const l = lead.rows[0];
-        const semana = proximoSabado(); // sábado da semana que fechou
+        const semana = proximoSabado();
         await pool.query(
             `INSERT INTO passados (uid, nome, telefone, email, semana, criado_em)
              VALUES ($1, $2, $3, $4, $5, $6)`,
             [l.uid, l.nome, l.telefone, l.email, semana, l.criado_em]
         );
-        await pool.query(`DELETE FROM whatsapp_agendados WHERE id = $1`, [id]);
+        await pool.query(`DELETE FROM leads WHERE id = $1`, [id]);
         console.log(`📦 Lead ${l.nome} movido para passados (semana ${semana})`);
     } catch (error) {
         console.error('❌ Erro ao mover para passados:', error.message);
-        throw error;
-    }
-}
-
-async function moverTodosNaoConfirmadosParaPassados() {
-    try {
-        const semana = proximoSabado();
-        // Leads que receberam convite mas não estão em sessoes_agendadas
-        const leads = await pool.query(`
-            SELECT w.* FROM whatsapp_agendados w
-            WHERE w.enviado = TRUE
-            AND NOT EXISTS (
-                SELECT 1 FROM sessoes_agendadas s WHERE s.telefone = w.telefone
-            )
-        `);
-        console.log(`📦 Movendo ${leads.rows.length} não-confirmados para passados...`);
-        for (const l of leads.rows) {
-            await pool.query(
-                `INSERT INTO passados (uid, nome, telefone, email, semana, criado_em)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [l.uid, l.nome, l.telefone, l.email, semana, l.criado_em]
-            );
-            await pool.query(`DELETE FROM whatsapp_agendados WHERE id = $1`, [l.id]);
-        }
-        console.log(`✅ ${leads.rows.length} leads movidos para passados`);
-        return leads.rows.length;
-    } catch (error) {
-        console.error('❌ Erro ao mover não-confirmados:', error.message);
         throw error;
     }
 }
@@ -288,20 +360,19 @@ async function listarPassados() {
     }
 }
 
-// Reativar passado → entra na semana vigente com enviado=TRUE
 async function reativarPassado(id) {
     try {
         const row = await pool.query(`SELECT * FROM passados WHERE id = $1`, [id]);
         if (!row.rows.length) throw new Error('Passado não encontrado');
         const p = row.rows[0];
-        const enviarEm = calcularEnviarEm();
         await pool.query(
-            `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em, enviado, criado_em)
-             VALUES ($1, $2, $3, $4, $5, TRUE, $6)`,
-            [p.uid || `reativado-${Date.now()}`, p.nome, p.telefone, p.email, enviarEm, p.criado_em || new Date()]
+            `INSERT INTO leads (uid, nome, telefone, email, criado_em)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (uid) DO NOTHING`,
+            [p.uid || `reativado-${Date.now()}`, p.nome, p.telefone, p.email, p.criado_em || new Date()]
         );
         await pool.query(`DELETE FROM passados WHERE id = $1`, [id]);
-        console.log(`♻️ Passado ${p.nome} reativado para semana vigente`);
+        console.log(`♻️ Passado ${p.nome} reativado`);
     } catch (error) {
         console.error('❌ Erro ao reativar passado:', error.message);
         throw error;
@@ -318,153 +389,37 @@ async function deletarPassado(id) {
     }
 }
 
-// ── ADMIN — listagens ──
-async function listarLeads() {
-    try {
-        const result = await pool.query(`SELECT * FROM whatsapp_agendados ORDER BY criado_em DESC`);
-        return result.rows;
-    } catch (error) {
-        console.error('❌ Erro ao listar leads:', error.message);
-        return [];
-    }
-}
-
-async function listarSessoes() {
-    try {
-        const result = await pool.query(`SELECT * FROM sessoes_agendadas ORDER BY confirmado_em DESC`);
-        return result.rows;
-    } catch (error) {
-        console.error('❌ Erro ao listar sessoes:', error.message);
-        return [];
-    }
-}
-
-async function listarMensagensEnviadas() {
-    try {
-        const result = await pool.query(`SELECT * FROM mensagens_enviadas ORDER BY enviado_em DESC`);
-        return result.rows;
-    } catch (error) {
-        console.error('❌ Erro ao listar mensagens:', error.message);
-        return [];
-    }
-}
-
-async function atualizarLead(id, campos) {
-    try {
-        const sets = Object.keys(campos).map((k, i) => `${k} = $${i + 2}`).join(', ');
-        const valores = [id, ...Object.values(campos)];
-        await pool.query(`UPDATE whatsapp_agendados SET ${sets} WHERE id = $1`, valores);
-        console.log(`✅ Lead ${id} atualizado`);
-    } catch (error) {
-        console.error('❌ Erro ao atualizar lead:', error.message);
-        throw error;
-    }
-}
-
-async function atualizarSessao(id, campos) {
-    try {
-        const sets = Object.keys(campos).map((k, i) => `${k} = $${i + 2}`).join(', ');
-        const valores = [id, ...Object.values(campos)];
-        await pool.query(`UPDATE sessoes_agendadas SET ${sets} WHERE id = $1`, valores);
-        console.log(`✅ Sessão ${id} atualizada`);
-    } catch (error) {
-        console.error('❌ Erro ao atualizar sessão:', error.message);
-        throw error;
-    }
-}
-
-async function deletarLead(id) {
-    try {
-        await pool.query(`DELETE FROM whatsapp_agendados WHERE id = $1`, [id]);
-        console.log(`🗑️ Lead ${id} deletado`);
-    } catch (error) {
-        console.error('❌ Erro ao deletar lead:', error.message);
-        throw error;
-    }
-}
-
-async function deletarSessao(id) {
-    try {
-        await pool.query(`DELETE FROM sessoes_agendadas WHERE id = $1`, [id]);
-        console.log(`🗑️ Sessão ${id} deletada`);
-    } catch (error) {
-        console.error('❌ Erro ao deletar sessão:', error.message);
-        throw error;
-    }
-}
-
-async function moverParaConfirmados(id) {
-    try {
-        const lead = await pool.query(`SELECT * FROM whatsapp_agendados WHERE id = $1`, [id]);
-        if (!lead.rows.length) throw new Error('Lead não encontrado');
-        const l = lead.rows[0];
-        const dataSabado = proximoSabado();
-        const result = await pool.query(
-            `INSERT INTO sessoes_agendadas (nome, telefone, data_sessao) VALUES ($1, $2, $3) RETURNING id`,
-            [l.nome, l.telefone, dataSabado]
-        );
-        console.log(`➡️ Lead ${l.nome} movido para confirmados`);
-        return result.rows[0].id;
-    } catch (error) {
-        console.error('❌ Erro ao mover para confirmados:', error.message);
-        throw error;
-    }
-}
-
-async function adicionarLead(uid, nome, telefone, email) {
-    try {
-        const enviarEm = calcularEnviarEm();
-        const result = await pool.query(
-            `INSERT INTO whatsapp_agendados (uid, nome, telefone, email, enviar_em) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-            [uid || `manual-${Date.now()}`, nome, telefone, email, enviarEm]
-        );
-        console.log(`✅ Lead ${nome} adicionado manualmente`);
-        return result.rows[0].id;
-    } catch (error) {
-        console.error('❌ Erro ao adicionar lead:', error.message);
-        throw error;
-    }
-}
-
-async function adicionarSessao(nome, telefone, dataSessao) {
-    try {
-        const result = await pool.query(
-            `INSERT INTO sessoes_agendadas (nome, telefone, data_sessao) VALUES ($1, $2, $3) RETURNING id`,
-            [nome, telefone, dataSessao]
-        );
-        console.log(`✅ Sessão de ${nome} adicionada manualmente`);
-        return result.rows[0].id;
-    } catch (error) {
-        console.error('❌ Erro ao adicionar sessão:', error.message);
-        throw error;
-    }
-}
-
 module.exports = {
     initDb,
-    agendarEnvio,
-    buscarPendentes,
-    marcarEnviado,
+    // leads
+    registrarLead,
+    marcarLeadConfirmado,
+    buscarLeadPorUid,
+    listarLeads,
+    atualizarLead,
+    deletarLead,
+    adicionarLead,
+    cancelarLead,
+    moverParaPassados,
+    // sessoes
     salvarSessaoAgendada,
     buscarConfirmadosParaSabado,
+    listarSessoes,
+    atualizarSessao,
+    deletarSessao,
+    adicionarSessao,
+    // mensagens
     registrarMensagem,
     jaEnviou,
-    cancelarLead,
+    listarMensagensEnviadas,
+    // cancelados
     listarCancelados,
     reativarCancelado,
-    moverParaPassados,
-    moverTodosNaoConfirmadosParaPassados,
+    deletarCancelado,
+    // passados
     listarPassados,
     reativarPassado,
     deletarPassado,
-    listarLeads,
-    listarSessoes,
-    listarMensagensEnviadas,
-    atualizarLead,
-    atualizarSessao,
-    deletarLead,
-    deletarSessao,
-    moverParaConfirmados,
-    adicionarLead,
-    adicionarSessao
+    // util
+    proximoSabado,
 };
