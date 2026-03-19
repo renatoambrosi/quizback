@@ -232,6 +232,33 @@ router.post('/admin/grupo/livre', autenticar, async (req, res) => {
     }
 });
 
+// ── PARTICIPANTES DO GRUPO ──
+
+router.get('/admin/grupo/participantes', autenticar, async (req, res) => {
+    try {
+        const evolutionUrl = process.env.EVOLUTION_URL;
+        const apiKey = process.env.EVOLUTION_API_KEY;
+        const instance = encodeURIComponent(process.env.EVOLUTION_INSTANCE);
+        const jid = process.env.GRUPO_SESSAO_JID || '120363423552674236@g.us';
+
+        const resp = await axios.get(
+            `${evolutionUrl}/group/participants/${instance}`,
+            { params: { groupJid: jid }, headers: { apikey: apiKey }, timeout: 10000 }
+        );
+
+        const participants = resp.data?.participants || [];
+        const numeros = participants.map(p => {
+            const id = p.id || '';
+            return id.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        });
+
+        res.json({ success: true, participantes: numeros });
+    } catch (err) {
+        console.error('❌ Erro ao buscar participantes:', err.message);
+        res.status(500).json({ error: 'Erro ao buscar participantes do grupo', detalhe: err.message });
+    }
+});
+
 // ── FILA — proxy para o gateway ──
 
 router.get('/admin/fila', autenticar, async (req, res) => {
