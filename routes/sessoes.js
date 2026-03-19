@@ -25,7 +25,7 @@ async function enviarViaGateway(telefone, mensagem, nome) {
     if (!url || !token) throw new Error('GATEWAY_URL ou GATEWAY_TOKEN não configurados');
     await axios.post(
         `${url}/enviar`,
-        { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato: false },
+        { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato: false }, // confirmação entra na fila
         { headers: { 'x-gateway-token': token, 'Content-Type': 'application/json' }, timeout: 10000 }
     );
 }
