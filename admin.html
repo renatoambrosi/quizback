@@ -140,14 +140,18 @@
     <div class="card">
       <div class="card-header">
         Confirmados na Sessão de Diagnóstico
-        <button class="btn-add" onclick="abrirModalAdicionar('sessao')">➕ Adicionar</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="grupoStatus" style="font-size:0.72rem;color:#9a9480">—</span>
+          <button class="btn btn-gray" onclick="verificarGrupo()">🔍 Atualizar</button>
+          <button class="btn-add" onclick="abrirModalAdicionar('sessao')">➕ Adicionar</button>
+        </div>
       </div>
       <div style="overflow-x:auto">
         <table>
           <thead><tr>
-            <th>Nome</th><th>Telefone</th><th>Data Sessão</th><th>Confirmado em</th><th>Ações</th>
+            <th>Nome</th><th>Telefone</th><th>Data Sessão</th><th>Confirmado em</th><th>No grupo</th><th>Ações</th>
           </tr></thead>
-          <tbody id="bodySessoes"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
+          <tbody id="bodySessoes"><tr><td colspan="6" class="empty">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -247,6 +251,7 @@
     document.getElementById('panel-' + name).classList.add('active');
     btn.classList.add('active');
     if (name === 'expedicao') conectarFila();
+    if (name === 'sessoes') verificarGrupo();
   }
 
   function showToast(msg, err = false) {
@@ -328,23 +333,55 @@
       </tr>`).join('');
   }
 
+  let participantesGrupo = null;
+
   // ── CONFIRMADOS ──
   function renderSessoes({ sessoes }) {
     const tbody = document.getElementById('bodySessoes');
-    if (!sessoes.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Nenhum confirmado</td></tr>'; return; }
-    tbody.innerHTML = sessoes.map(s => `
+    if (!sessoes.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum confirmado</td></tr>'; return; }
+    tbody.innerHTML = sessoes.map(s => {
+      let badgeGrupo = '<span class="badge badge-gray">—</span>';
+      if (participantesGrupo !== null) {
+        const tel = (s.telefone || '').replace(/\D/g, '');
+        const noGrupo = participantesGrupo.some(p => p.includes(tel) || tel.includes(p));
+        badgeGrupo = noGrupo
+          ? '<span class="badge badge-green">✓ No grupo</span>'
+          : '<span class="badge badge-yellow">⚠️ Fora</span>';
+      }
+      return `
       <tr>
         <td>${esc(s.nome)}</td>
         <td>${esc(s.telefone)}</td>
         <td>${fmtData(s.data_sessao)}</td>
         <td>${fmt(s.confirmado_em)}</td>
+        <td>${badgeGrupo}</td>
         <td>
           <div class="action-row">
             <button class="btn btn-success" onclick="enviarManual('${esc(s.nome)}','${esc(s.telefone)}','confirmacao')">🔗 Link do grupo</button>
             <button class="btn btn-danger" onclick="deletarSessao(${s.id},'${esc(s.nome)}')">🗑️</button>
           </div>
         </td>
-      </tr>`).join('');
+      </tr>`}).join('');
+  }
+
+  async function verificarGrupo() {
+    const statusEl = document.getElementById('grupoStatus');
+    statusEl.textContent = 'Verificando...';
+    try {
+      const r = await fetch('/admin/grupo/participantes');
+      const d = await r.json();
+      if (d.success) {
+        participantesGrupo = d.participantes;
+        statusEl.textContent = `${d.participantes.length} no grupo`;
+        renderSessoes(dadosGlobais);
+      } else {
+        statusEl.textContent = 'Erro ao verificar';
+        showToast(d.error || 'Erro ao buscar participantes', true);
+      }
+    } catch {
+      statusEl.textContent = 'Erro de conexão';
+      showToast('Erro ao verificar grupo', true);
+    }
   }
 
   // ── CANCELADOS ──
