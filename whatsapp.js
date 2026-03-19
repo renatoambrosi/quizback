@@ -63,8 +63,8 @@ class WhatsAppNotifier {
             }
 
             // Agenda convite em 15 minutos (via fila)
-            const QUINZE_MIN = 15 * 60 * 1000;
-            console.log(`⏳ Convite agendado para ${cliente.nome} em 15 minutos`);
+            const QUINZE_MIN = 30 * 60 * 1000;
+            console.log(`⏳ Convite agendado para ${cliente.nome} em 30 minutos`);
             setTimeout(async () => {
                 try {
                     const { getMensagemConfig, atualizarStatusLead } = require('./db');
