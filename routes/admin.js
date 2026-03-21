@@ -16,6 +16,10 @@ const { emitir, EVENTOS, registrarCliente } = require('../monitor-events');
 const { enviarViaGateway, formatarTelefone } = require('../whatsapp');
 const { dispararMensagemGrupo, enviarNoGrupo } = require('../scheduler');
 
+// ── TEXTO FIXO — SEGUNDA CHAMADA ──
+const SEGUNDA_CHAMADA_TEXTO = (nome, grupoLink) =>
+    `Olá, ${nome}! 🌟\n\nAinda dá tempo de participar da Sessão de Diagnóstico que você confirmou presença!\n\nSem entrar no grupo você não vai conseguir participar. Entra agora:\n\n👉 ${grupoLink}\n\nTe esperamos lá! 💛\n— Suellen Seragi`;
+
 function gatewayHeaders() {
     return { 'x-gateway-token': process.env.GATEWAY_TOKEN };
 }
@@ -178,16 +182,21 @@ router.post('/admin/enviar', autenticar, async (req, res) => {
         if (!nome || !telefone || !etapa) return res.status(400).json({ error: 'Dados incompletos' });
 
         const numero = formatarTelefone(telefone);
-        const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(numero)}`;
         const grupoLink = process.env.GRUPO_SESSAO_LINK || 'https://chat.whatsapp.com/F9XSTevtPPO6gvSxvevXvW?mode=gi_t';
 
-        let textoBase = await getMensagemConfig(etapa);
-        if (!textoBase) return res.status(400).json({ error: `Mensagem '${etapa}' não encontrada` });
+        let mensagem;
 
-        const mensagem = textoBase
-            .replace(/\{nome\}/gi, nome)
-            .replace(/\{link\}/gi, link)
-            .replace(/\{grupo_link\}/gi, grupoLink);
+        if (etapa === 'segunda_chamada') {
+            mensagem = SEGUNDA_CHAMADA_TEXTO(nome, grupoLink);
+        } else {
+            const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(nome)}&ref=${encodeURIComponent(numero)}`;
+            let textoBase = await getMensagemConfig(etapa);
+            if (!textoBase) return res.status(400).json({ error: `Mensagem '${etapa}' não encontrada` });
+            mensagem = textoBase
+                .replace(/\{nome\}/gi, nome)
+                .replace(/\{link\}/gi, link)
+                .replace(/\{grupo_link\}/gi, grupoLink);
+        }
 
         const resp = await enviarViaGateway(numero, mensagem, nome, false);
         res.json({ success: true, etapa, nome, posicao: resp?.posicao || 1 });
@@ -250,7 +259,7 @@ router.get('/admin/grupo/participantes', autenticar, async (req, res) => {
         const numeros = participants.map(p => {
             const phone = p.phoneNumber || p.id || '';
             return phone.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@lid', '');
-        }).filter(n => n && !n.includes('@')); // remove @lid que não têm phoneNumber
+        }).filter(n => n && !n.includes('@'));
 
         res.json({ success: true, participantes: numeros });
     } catch (err) {
