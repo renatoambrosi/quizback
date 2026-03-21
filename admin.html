@@ -36,6 +36,7 @@
     .btn-success { background: #2e7d32; color: white; }
     .btn-gray { background: #9a9480; color: white; }
     .btn-blue { background: #1565c0; color: white; }
+    .btn-orange { background: #e65100; color: white; }
     .btn-add { background: #9b8732; color: white; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.78rem; font-weight: 600; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; }
     .badge-green { background: #e8f5e9; color: #2e7d32; }
@@ -55,7 +56,6 @@
     .field input, .field textarea { border: 1px solid #d5cdb8; border-radius: 4px; padding: 6px 10px; font-size: 0.82rem; width: 100%; font-family: inherit; }
     .field textarea { resize: vertical; }
     .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-    /* Mensagens */
     .msg-card { border: 1px solid #e8e3d0; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
     .msg-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; }
     .msg-titulo { font-weight: 700; font-size: 0.88rem; color: #2d2a1e; }
@@ -65,7 +65,6 @@
     .grupo-disparos { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 20px; border-bottom: 1px solid #e8e3d0; }
     .grupo-livre { padding: 16px 20px; }
     .grupo-livre textarea { width: 100%; border: 1px solid #d5cdb8; border-radius: 6px; padding: 10px; font-size: 0.85rem; font-family: inherit; resize: vertical; margin-bottom: 10px; }
-    /* Expedição */
     .fila-dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; display: inline-block; margin-right: 6px; }
     .fila-dot.conectado { background: #2e7d32; }
     .fila-dot.enviando { background: #9b8732; animation: pulse 1s infinite; }
@@ -179,8 +178,6 @@
 
   <!-- MENSAGENS -->
   <div id="panel-mensagens" class="panel">
-
-    <!-- Disparos para o grupo -->
     <div class="card">
       <div class="card-header">📢 Disparos para o Grupo — Teste</div>
       <div class="grupo-disparos">
@@ -195,8 +192,6 @@
         <button class="btn btn-success" onclick="enviarMsgLivre()">📤 Enviar ao grupo</button>
       </div>
     </div>
-
-    <!-- Editor de mensagens -->
     <div class="card">
       <div class="card-header">✏️ Editor de Mensagens</div>
       <div style="padding:16px" id="msgEditor">Carregando...</div>
@@ -269,7 +264,6 @@
 
   function fmtData(iso) {
     if (!iso) return '—';
-    // Aceita tanto '2026-03-19' quanto '2026-03-19T00:00:00.000Z'
     const s = String(iso).substring(0, 10);
     const [y, m, d] = s.split('-');
     if (!y || !m || !d) return '—';
@@ -347,17 +341,12 @@
       let badgeGrupo = '<span class="badge badge-gray">—</span>';
       if (participantesGrupo !== null) {
         const tel = (s.telefone || '').replace(/\D/g, '');
-
-        // Grupo retorna números SEM o 9 extra (ex: 556182741202)
-        // Banco tem números COM o 9 extra (ex: 5561982741202)
-        // Normaliza os dois removendo 55 e o 9 extra para comparar
         function normalizar(n) {
           let s = n.replace(/\D/g, '');
-          if (s.startsWith('55')) s = s.slice(2); // remove 55
-          if (s.length === 11 && s[2] === '9') s = s.slice(0, 2) + s.slice(3); // remove 9 extra
-          return s; // DDD + 8 dígitos
+          if (s.startsWith('55')) s = s.slice(2);
+          if (s.length === 11 && s[2] === '9') s = s.slice(0, 2) + s.slice(3);
+          return s;
         }
-
         const telNorm = normalizar(tel);
         const noGrupo = participantesGrupo.some(p => normalizar(p) === telNorm);
         badgeGrupo = noGrupo
@@ -374,6 +363,7 @@
         <td>
           <div class="action-row">
             <button class="btn btn-success" onclick="enviarManual('${esc(s.nome)}','${esc(s.telefone)}','confirmacao')">🔗 Link do grupo</button>
+            <button class="btn btn-orange" onclick="enviarManual('${esc(s.nome)}','${esc(s.telefone)}','segunda_chamada')">📣 2ª Chamada</button>
             <button class="btn btn-danger" onclick="deletarSessao(${s.id},'${esc(s.nome)}')">🗑️</button>
           </div>
         </td>
@@ -473,7 +463,7 @@
   // ── AÇÕES ──
 
   async function enviarManual(nome, telefone, etapa) {
-    const labels = { convite: 'convite', reconvite: 'reconvite', confirmacao: 'confirmação' };
+    const labels = { convite: 'convite', reconvite: 'reconvite', confirmacao: 'confirmação', segunda_chamada: '2ª chamada' };
     if (!confirm(`Enviar ${labels[etapa] || etapa} para ${nome}?`)) return;
     try {
       const resp = await fetch('/admin/enviar', {
