@@ -182,7 +182,11 @@ router.post('/admin/enviar', autenticar, async (req, res) => {
         if (!nome || !telefone || !etapa) return res.status(400).json({ error: 'Dados incompletos' });
 
         const numero = formatarTelefone(telefone);
-        const grupoLink = process.env.GRUPO_SESSAO_LINK || 'https://chat.whatsapp.com/F9XSTevtPPO6gvSxvevXvW?mode=gi_t';
+        const grupoLink = process.env.GRUPO_SESSAO_LINK;
+        if (!grupoLink) {
+            console.error('❌ GRUPO_SESSAO_LINK não configurado no Railway');
+            return res.status(500).json({ error: 'Link do grupo não configurado. Adicione GRUPO_SESSAO_LINK nas variáveis do Railway.' });
+        }
 
         let mensagem;
 
