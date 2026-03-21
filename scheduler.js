@@ -5,15 +5,14 @@ const { enviarViaGateway } = require('./whatsapp');
 
 const GRUPO_SESSAO_JID = process.env.GRUPO_SESSAO_JID || '120363423552674236@g.us';
 
-// ── HORÁRIOS ──
+// ── HORÁRIOS (Railway roda em UTC, Brasília = UTC-3) ──
 const HORARIOS = {
     quarta:       '00 10 * * 3',  // Quarta às 10h
     sexta:        '00 10 * * 5',  // Sexta às 10h
-    sabado_1h:    '00 13 * * 6',  // Sábado às 13h
-    sabado_15min: '45 13 * * 6',  // Sábado às 13h45
+    sabado_1h:    '00 16 * * 6',  // Sábado 13h Brasília = 16h UTC
+    sabado_15min: '45 16 * * 6',  // Sábado 13h45 Brasília = 16h45 UTC
 };
 
-// ── ENVIAR MENSAGEM PARA O GRUPO VIA GATEWAY (fila) ──
 async function enviarNoGrupo(mensagem, origem) {
     try {
         await enviarViaGateway(GRUPO_SESSAO_JID, mensagem, 'Grupo Sessão', false);
@@ -54,14 +53,14 @@ function iniciarScheduler() {
     });
 
     cron.schedule(HORARIOS.sabado_1h, async () => {
-        console.log('⏰ Sábado 13h — enviando "falta 1 hora" no grupo...');
+        console.log('⏰ Sábado 13h (Brasília) — enviando "falta 1 hora" no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_1h' });
         await dispararMensagemGrupo('sabado_1h', 'sabado_1h');
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_1h' });
     });
 
     cron.schedule(HORARIOS.sabado_15min, async () => {
-        console.log('⏰ Sábado 13h45 — enviando "faltam 15 minutos" no grupo...');
+        console.log('⏰ Sábado 13h45 (Brasília) — enviando "faltam 15 minutos" no grupo...');
         emitir(EVENTOS.SCHEDULER_INICIO, { job: 'sabado_15min' });
         await dispararMensagemGrupo('sabado_15min', 'sabado_15min');
         emitir(EVENTOS.SCHEDULER_FIM, { job: 'sabado_15min' });
