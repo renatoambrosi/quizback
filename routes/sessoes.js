@@ -25,7 +25,7 @@ async function enviarViaGateway(telefone, mensagem, nome) {
     if (!url || !token) throw new Error('GATEWAY_URL ou GATEWAY_TOKEN não configurados');
     await axios.post(
         `${url}/enviar`,
-        { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato: false }, // confirmação entra na fila
+        { telefone, mensagem, nome: nome || telefone, origem: 'quizback', imediato: false },
         { headers: { 'x-gateway-token': token, 'Content-Type': 'application/json' }, timeout: 10000 }
     );
 }
@@ -57,7 +57,12 @@ router.post('/agendar-sessao', async (req, res) => {
 
         // 3. Mensagem de confirmação via gateway (fila)
         try {
-            const grupoLink = process.env.GRUPO_SESSAO_LINK || 'https://chat.whatsapp.com/F9XSTevtPPO6gvSxvevXvW?mode=gi_t';
+            const grupoLink = process.env.GRUPO_SESSAO_LINK;
+            if (!grupoLink) {
+                console.error('❌ GRUPO_SESSAO_LINK não configurado no Railway');
+                throw new Error('Link do grupo não configurado. Adicione GRUPO_SESSAO_LINK nas variáveis do Railway.');
+            }
+
             let textoConfirmacao = await getMensagemConfig('confirmacao');
             if (!textoConfirmacao) {
                 textoConfirmacao = `Olá, {nome}! 🎉\n\nSua vaga na Sessão de Diagnóstico está confirmada!\n\n📅 Sábado às 14h\n\nEntre no grupo da sessão:\n👉 {grupo_link}\n\nAté sábado! 🌟\n— Suellen Seragi`;
