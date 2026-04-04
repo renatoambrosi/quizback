@@ -18,7 +18,7 @@ const { dispararMensagemGrupo, enviarNoGrupo } = require('../scheduler');
 
 // ── TEXTO FIXO — SEGUNDA CHAMADA ──
 const SEGUNDA_CHAMADA_TEXTO = (nome, grupoLink) =>
-    `Olá, ${nome}! 🌟\n\nAinda dá tempo de participar da Sessão de Diagnóstico que você confirmou presença!\n\nSem entrar no grupo você não vai conseguir participar. Entra agora:\n\n👉 ${grupoLink}\n\nTe esperamos lá! 💛\n— Suellen Seragi`;
+    `Olá, ${nome}! 🌟\n\nAinda dá tempo de participar da Sessão de Diagnóstico GRATUITA do Teste de Prosperidade que você confirmou presença!\n\nSem entrar no grupo você não vai conseguir participar. Entra agora:\n\n👉 ${grupoLink}\n\nTe esperamos lá! 💛\n— Suellen Seragi`;
 
 function gatewayHeaders() {
     return { 'x-gateway-token': process.env.GATEWAY_TOKEN };
