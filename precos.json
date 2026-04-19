@@ -1,22 +1,34 @@
 {
   "teste_prosperidade": {
     "nome": "Teste de Prosperidade",
-    "tipo": "simples",
-    "preco_avista": "19,00"
+    "tipo": "promo",
+    "mostrar_promo": false,
+    "preco_padrao": "19,00",
+    "preco_promo": "9,00"
   },
   "guia_pratico": {
     "nome": "E-Book: Guia Prático para Reprogramar a Mente",
-    "tipo": "parcelado",
-    "preco_avista": "84,11",
+    "tipo": "curso",
+    "mostrar_promo": false,
+    "preco_padrao": "84,11",
     "parcelas_qtd": 12,
-    "parcelas_valor": "8,70"
+    "parcelas_valor_padrao": "8,70",
+    "preco_promo": "60,00",
+    "parcelas_valor_promo": "6,00",
+    "preco_alunos": "40,00",
+    "parcelas_valor_alunos": "4,00"
   },
   "atal_maneira_livro": {
     "nome": "Livro Digital A Tal Maneira + Audiobook + Aulão",
-    "tipo": "parcelado",
-    "preco_avista": "137,88",
+    "tipo": "curso",
+    "mostrar_promo": false,
+    "preco_padrao": "137,88",
     "parcelas_qtd": 12,
-    "parcelas_valor": "14,26"
+    "parcelas_valor_padrao": "14,26",
+    "preco_promo": "100,00",
+    "parcelas_valor_promo": "10,00",
+    "preco_alunos": "70,00",
+    "parcelas_valor_alunos": "7,00"
   },
   "ouro_reprogramacao": {
     "nome": "Curso: O Ouro da Reprogramação Mental",
