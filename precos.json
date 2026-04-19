@@ -2,8 +2,10 @@
   "clube_vida_magica": {
     "nome": "Clube Vida Mágica",
     "tipo": "comunidade",
+    "mostrar_promo_ouro": false,
     "preco_ouro": "59,90",
     "preco_ouro_promo": "49,90",
+    "mostrar_promo_magico": false,
     "preco_magico": "89,90",
     "preco_magico_promo": "79,90"
   },
