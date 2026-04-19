@@ -56,8 +56,26 @@ router.get('/precos', (req, res) => {
                 p.alunos_desconto_pct = calcularDesconto(p.preco_padrao, p.preco_alunos);
                 p.alunos_parcelas_qtd = p.parcelas_qtd_alunos || p.parcelas_qtd;
             } else if (p.tipo === 'comunidade') {
-                p.desconto_ouro_pct = calcularDesconto(p.preco_ouro, p.preco_ouro_promo);
-                p.desconto_magico_pct = calcularDesconto(p.preco_magico, p.preco_magico_promo);
+                // Plano Ouro
+                if (p.mostrar_promo_ouro) {
+                    p.exibir_ouro = p.preco_ouro_promo;
+                    p.exibir_de_ouro = p.preco_ouro;
+                    p.desconto_ouro_pct = calcularDesconto(p.preco_ouro, p.preco_ouro_promo);
+                } else {
+                    p.exibir_ouro = p.preco_ouro;
+                    p.exibir_de_ouro = null;
+                    p.desconto_ouro_pct = null;
+                }
+                // Plano Mágico
+                if (p.mostrar_promo_magico) {
+                    p.exibir_magico = p.preco_magico_promo;
+                    p.exibir_de_magico = p.preco_magico;
+                    p.desconto_magico_pct = calcularDesconto(p.preco_magico, p.preco_magico_promo);
+                } else {
+                    p.exibir_magico = p.preco_magico;
+                    p.exibir_de_magico = null;
+                    p.desconto_magico_pct = null;
+                }
             }
         });
 
