@@ -6,6 +6,7 @@ require('dotenv').config();
 const paymentRoutes = require('./routes/payments');
 const sessoesRoutes = require('./routes/sessoes');
 const adminRoutes = require('./routes/admin');
+const precosRoutes = require('./routes/precos');
 const { initDb } = require('./db');
 const { iniciarScheduler } = require('./scheduler');
 
