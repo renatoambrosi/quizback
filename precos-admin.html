@@ -193,6 +193,8 @@ function camposAlunos(key, p) {
 function camposComunidade(key, p) {
   const pctOuro = calcDesconto(p.preco_ouro, p.preco_ouro_promo);
   const pctMagico = calcDesconto(p.preco_magico, p.preco_magico_promo);
+  const ouroAtivo = p.mostrar_promo_ouro || false;
+  const magicoAtivo = p.mostrar_promo_magico || false;
   return `
     <div class="secao">
       <div class="secao-titulo">Plano Ouro</div>
@@ -200,8 +202,15 @@ function camposComunidade(key, p) {
         <div class="field"><label>Preço Ouro (R$)</label><input type="text" data-field="preco_ouro" value="${p.preco_ouro}" oninput="recalcular('${key}')"></div>
         <div class="field"><label>Preço Ouro Promo (R$)</label><input type="text" data-field="preco_ouro_promo" value="${p.preco_ouro_promo}" oninput="recalcular('${key}')"></div>
       </div>
-      <div class="desconto-tag promo ${pctOuro ? 'visible' : ''}" id="desc-ouro-${key}">
-        <span>Desconto Ouro:</span><strong id="pct-ouro-${key}">${pctOuro ? pctOuro + '% off' : '—'}</strong>
+      <div class="toggle-row" style="margin-top:12px;">
+        <div class="toggle-label-group">
+          <span class="tl-titulo">Exibir Preço Promo Ouro</span>
+          <span class="tl-sub" id="toggle-sub-ouro-${key}">Mostra De R$ ${p.preco_ouro} por R$ ${p.preco_ouro_promo} com % de desconto</span>
+        </div>
+        <label class="toggle"><input type="checkbox" data-field="mostrar_promo_ouro" ${ouroAtivo ? 'checked' : ''} onchange="recalcular('${key}')"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="desconto-tag promo ${ouroAtivo && pctOuro ? 'visible' : ''}" id="desc-ouro-${key}">
+        <span>Desconto Ouro exibido:</span><strong id="pct-ouro-${key}">${pctOuro ? pctOuro + '% off' : '—'}</strong>
       </div>
     </div>
     <div class="secao">
@@ -210,8 +219,15 @@ function camposComunidade(key, p) {
         <div class="field"><label>Preço Mágico (R$)</label><input type="text" data-field="preco_magico" value="${p.preco_magico}" oninput="recalcular('${key}')"></div>
         <div class="field"><label>Preço Mágico Promo (R$)</label><input type="text" data-field="preco_magico_promo" value="${p.preco_magico_promo}" oninput="recalcular('${key}')"></div>
       </div>
-      <div class="desconto-tag alunos ${pctMagico ? 'visible' : ''}" id="desc-magico-${key}">
-        <span>Desconto Mágico:</span><strong id="pct-magico-${key}">${pctMagico ? pctMagico + '% off' : '—'}</strong>
+      <div class="toggle-row" style="margin-top:12px;">
+        <div class="toggle-label-group">
+          <span class="tl-titulo">Exibir Preço Promo Mágico</span>
+          <span class="tl-sub" id="toggle-sub-magico-${key}">Mostra De R$ ${p.preco_magico} por R$ ${p.preco_magico_promo} com % de desconto</span>
+        </div>
+        <label class="toggle"><input type="checkbox" data-field="mostrar_promo_magico" ${magicoAtivo ? 'checked' : ''} onchange="recalcular('${key}')"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="desconto-tag alunos ${magicoAtivo && pctMagico ? 'visible' : ''}" id="desc-magico-${key}">
+        <span>Desconto Mágico exibido:</span><strong id="pct-magico-${key}">${pctMagico ? pctMagico + '% off' : '—'}</strong>
       </div>
     </div>`;
 }
@@ -264,10 +280,28 @@ function recalcular(key) {
     const ouroPromo = getVal(card, 'preco_ouro_promo');
     const magico = getVal(card, 'preco_magico');
     const magicoPromo = getVal(card, 'preco_magico_promo');
+    const ouroCheck = card.querySelector('[data-field="mostrar_promo_ouro"]');
+    const magicoCheck = card.querySelector('[data-field="mostrar_promo_magico"]');
+
+    const subOuro = document.getElementById(`toggle-sub-ouro-${key}`);
+    if (subOuro) subOuro.textContent = `Mostra De R$ ${ouro || '?'} por R$ ${ouroPromo || '?'} com % de desconto`;
+
+    const subMagico = document.getElementById(`toggle-sub-magico-${key}`);
+    if (subMagico) subMagico.textContent = `Mostra De R$ ${magico || '?'} por R$ ${magicoPromo || '?'} com % de desconto`;
+
     const elOuro = document.getElementById(`desc-ouro-${key}`);
+    if (elOuro && ouroCheck?.checked) {
+      const pct = calcDesconto(ouro, ouroPromo);
+      if (pct) { document.getElementById(`pct-ouro-${key}`).textContent = pct + '% off'; elOuro.classList.add('visible'); }
+      else elOuro.classList.remove('visible');
+    } else if (elOuro) elOuro.classList.remove('visible');
+
     const elMagico = document.getElementById(`desc-magico-${key}`);
-    if (elOuro) { const pct = calcDesconto(ouro, ouroPromo); if (pct) { document.getElementById(`pct-ouro-${key}`).textContent = pct + '% off'; elOuro.classList.add('visible'); } else elOuro.classList.remove('visible'); }
-    if (elMagico) { const pct = calcDesconto(magico, magicoPromo); if (pct) { document.getElementById(`pct-magico-${key}`).textContent = pct + '% off'; elMagico.classList.add('visible'); } else elMagico.classList.remove('visible'); }
+    if (elMagico && magicoCheck?.checked) {
+      const pct = calcDesconto(magico, magicoPromo);
+      if (pct) { document.getElementById(`pct-magico-${key}`).textContent = pct + '% off'; elMagico.classList.add('visible'); }
+      else elMagico.classList.remove('visible');
+    } else if (elMagico) elMagico.classList.remove('visible');
     return;
   }
 
