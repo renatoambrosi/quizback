@@ -83,7 +83,6 @@
     text-transform: uppercase;
   }
 
-  /* TOAST */
   #toast {
     position: fixed;
     top: 24px;
@@ -102,7 +101,6 @@
   #toast.success { background: rgba(90,158,111,0.15); border: 1px solid rgba(90,158,111,0.4); color: #7FD49A; }
   #toast.error { background: rgba(224,85,85,0.15); border: 1px solid rgba(224,85,85,0.4); color: #F09090; }
 
-  /* CARD */
   .card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -130,19 +128,6 @@
     border: 1px solid var(--border);
   }
 
-  .card-img-placeholder {
-    width: 64px;
-    height: 64px;
-    border-radius: 10px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-  }
-
   .card-title-group { flex: 1; }
 
   .card-title {
@@ -151,12 +136,12 @@
     font-weight: 400;
     color: var(--gold-light);
     letter-spacing: 0.02em;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   .card-badge {
     font-size: 11px;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     padding: 3px 9px;
     border-radius: 20px;
@@ -167,7 +152,6 @@
 
   .card-body { padding: 24px 28px; }
 
-  /* FIELDS */
   .fields-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -202,23 +186,30 @@
     box-shadow: 0 0 0 3px rgba(201,168,76,0.06);
   }
 
-  /* SEÇÃO PROMO */
-  .promo-section {
+  .secao {
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid var(--border);
   }
 
-  .promo-toggle-row {
+  .secao-titulo {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  .toggle-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 0;
+    margin-bottom: 16px;
   }
 
-  .promo-label-group { display: flex; flex-direction: column; gap: 3px; }
-  .promo-label-group span:first-child { font-size: 13px; font-weight: 500; color: var(--text); }
-  .promo-label-group span:last-child { font-size: 11px; color: var(--text-muted); }
+  .toggle-label-group { display: flex; flex-direction: column; gap: 3px; }
+  .toggle-label-group .tl-titulo { font-size: 13px; font-weight: 500; color: var(--text); }
+  .toggle-label-group .tl-sub { font-size: 11px; color: var(--text-muted); }
 
   .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
   .toggle input { opacity: 0; width: 0; height: 0; }
@@ -243,10 +234,9 @@
   .toggle input:checked + .toggle-slider { background: rgba(201,168,76,0.15); border-color: rgba(201,168,76,0.5); }
   .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--gold); }
 
-  .promo-fields { display: none; margin-top: 20px; }
-  .promo-fields.visible { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .promo-fields { display: none; }
+  .promo-fields.visible { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
 
-  /* DESCONTO PREVIEW */
   .desconto-tag {
     display: none;
     align-items: center;
@@ -262,22 +252,6 @@
   .desconto-tag.alunos { background: rgba(139,167,95,0.06); border: 1px solid rgba(139,167,95,0.12); color: var(--text-muted); }
   .desconto-tag.alunos strong { color: var(--green); font-size: 14px; }
 
-  /* SEÇÃO ALUNOS */
-  .alunos-section {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  .alunos-section-title {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 16px;
-  }
-
-  /* SAVE BAR */
   .save-bar {
     position: sticky;
     bottom: 24px;
@@ -306,7 +280,7 @@
   .btn-save:active { transform: translateY(0); }
   .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-  .loading { text-align: center; padding: 80px 0; color: var(--text-muted); font-size: 14px; letter-spacing: 0.08em; }
+  .loading { text-align: center; padding: 80px 0; color: var(--text-muted); font-size: 14px; }
 
   @media (max-width: 600px) {
     .fields-grid, .fields-grid.three, .promo-fields.visible { grid-template-columns: 1fr; }
@@ -351,17 +325,15 @@ const IMAGENS = {
   atal_maneira_curso: '/images/atal-maneira-curso.png'
 };
 
-const EMOJIS = {
-  simples: '🔍',
-  parcelado: '📖',
-  curso: '🎓'
-};
-
 function calcDesconto(de, por) {
   const vDe = parseFloat(String(de).replace(',', '.'));
   const vPor = parseFloat(String(por).replace(',', '.'));
   if (!vDe || !vPor || vPor >= vDe) return null;
   return Math.round(((vDe - vPor) / vDe) * 100);
+}
+
+function getVal(card, field) {
+  return card.querySelector(`[data-field="${field}"]`)?.value || '';
 }
 
 function renderizar(precos) {
@@ -374,52 +346,31 @@ function renderizar(precos) {
     card.dataset.key = key;
 
     const imgSrc = IMAGENS[key];
-    const imgTag = imgSrc
-      ? `<img class="card-img" src="${imgSrc}" alt="${p.nome}" onerror="this.style.display='none'">`
-      : `<div class="card-img-placeholder">${EMOJIS[p.tipo] || '📦'}</div>`;
+    const imgTag = `<img class="card-img" src="${imgSrc}" alt="${p.nome}" onerror="this.style.display='none'">`;
 
-    const badgeTexto = p.tipo === 'simples' ? 'Preço único' : p.tipo === 'parcelado' ? 'Com parcelamento' : 'Curso completo';
+    const badge = p.tipo === 'promo'
+      ? '2 preços disponíveis (Padrão e Promo)'
+      : '3 preços disponíveis (Padrão, Promo e Aluno)';
 
-    // ── CAMPOS POR TIPO ──
-    let camposHTML = '';
+    const promoAtiva = p.mostrar_promo || false;
+    const pctPromo = calcDesconto(p.preco_padrao, p.preco_promo);
+    const pctAlunos = p.tipo === 'curso' ? calcDesconto(p.preco_padrao, p.preco_alunos) : null;
 
-    if (p.tipo === 'simples') {
-      camposHTML = `
+    // Texto dinâmico do toggle
+    const subToggle = `Mostra De R$ ${p.preco_padrao} por R$ <span class="toggle-promo-val">${p.preco_promo}</span> com % de desconto`;
+
+    // Campos padrão
+    let camposPadrao = '';
+    if (p.tipo === 'promo') {
+      camposPadrao = `
         <div class="fields-grid">
           <div class="field">
-            <label>Preço à vista (R$)</label>
-            <input type="text" data-field="preco_avista" value="${p.preco_avista}">
+            <label>Preço Padrão (R$)</label>
+            <input type="text" data-field="preco_padrao" value="${p.preco_padrao}" oninput="recalcular('${key}')">
           </div>
-        </div>
-      `;
-    }
-
-    if (p.tipo === 'parcelado') {
-      camposHTML = `
-        <div class="fields-grid three">
-          <div class="field">
-            <label>Preço à vista (R$)</label>
-            <input type="text" data-field="preco_avista" value="${p.preco_avista}">
-          </div>
-          <div class="field">
-            <label>Nº de Parcelas</label>
-            <input type="text" data-field="parcelas_qtd" value="${p.parcelas_qtd}">
-          </div>
-          <div class="field">
-            <label>Valor da Parcela (R$)</label>
-            <input type="text" data-field="parcelas_valor" value="${p.parcelas_valor}">
-          </div>
-        </div>
-      `;
-    }
-
-    if (p.tipo === 'curso') {
-      const pctPromo = calcDesconto(p.preco_padrao, p.preco_promo);
-      const pctAlunos = calcDesconto(p.preco_padrao, p.preco_alunos);
-      const promoAtiva = p.mostrar_promo || false;
-
-      camposHTML = `
-        <!-- PREÇO PADRÃO -->
+        </div>`;
+    } else {
+      camposPadrao = `
         <div class="fields-grid three">
           <div class="field">
             <label>Preço Padrão (R$)</label>
@@ -433,39 +384,39 @@ function renderizar(precos) {
             <label>Parcela Padrão (R$)</label>
             <input type="text" data-field="parcelas_valor_padrao" value="${p.parcelas_valor_padrao}">
           </div>
-        </div>
+        </div>`;
+    }
 
-        <!-- TOGGLE PROMO -->
-        <div class="promo-section">
-          <div class="promo-toggle-row">
-            <div class="promo-label-group">
-              <span>Exibir Preço Promo</span>
-              <span>Mostra "De ${p.preco_padrao} por X" com % de desconto</span>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" data-field="mostrar_promo" ${promoAtiva ? 'checked' : ''} onchange="togglePromo('${key}', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
+    // Campos promo
+    let camposPromo = '';
+    if (p.tipo === 'promo') {
+      camposPromo = `
+        <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
+          <div class="field">
+            <label>Preço Promo (R$)</label>
+            <input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')">
           </div>
-          <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
-            <div class="field">
-              <label>Preço Promo à vista (R$)</label>
-              <input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')">
-            </div>
-            <div class="field">
-              <label>Parcela Promo (R$)</label>
-              <input type="text" data-field="parcelas_valor_promo" value="${p.parcelas_valor_promo}">
-            </div>
+        </div>`;
+    } else {
+      camposPromo = `
+        <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
+          <div class="field">
+            <label>Preço Promo à vista (R$)</label>
+            <input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')">
           </div>
-          <div class="desconto-tag promo ${promoAtiva && pctPromo ? 'visible' : ''}" id="desc-promo-${key}">
-            <span>Desconto exibido ao cliente:</span>
-            <strong id="pct-promo-${key}">${pctPromo ? pctPromo + '% off' : '—'}</strong>
+          <div class="field">
+            <label>Parcela Promo (R$)</label>
+            <input type="text" data-field="parcelas_valor_promo" value="${p.parcelas_valor_promo}">
           </div>
-        </div>
+        </div>`;
+    }
 
-        <!-- PREÇO ALUNOS -->
-        <div class="alunos-section">
-          <div class="alunos-section-title">Preço Alunos — exibido via funil</div>
+    // Seção alunos (só para tipo curso)
+    let secaoAlunos = '';
+    if (p.tipo === 'curso') {
+      secaoAlunos = `
+        <div class="secao">
+          <div class="secao-titulo">Preço Alunos — exibido via funil</div>
           <div class="fields-grid">
             <div class="field">
               <label>Preço Alunos à vista (R$)</label>
@@ -480,8 +431,7 @@ function renderizar(precos) {
             <span>Desconto exibido ao aluno:</span>
             <strong id="pct-alunos-${key}">${pctAlunos ? pctAlunos + '% off' : '—'}</strong>
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
     card.innerHTML = `
@@ -489,10 +439,30 @@ function renderizar(precos) {
         ${imgTag}
         <div class="card-title-group">
           <div class="card-title">${p.nome}</div>
-          <div class="card-badge">${badgeTexto}</div>
+          <div class="card-badge">${badge}</div>
         </div>
       </div>
-      <div class="card-body">${camposHTML}</div>
+      <div class="card-body">
+        ${camposPadrao}
+        <div class="secao">
+          <div class="toggle-row">
+            <div class="toggle-label-group">
+              <span class="tl-titulo">Exibir Preço Promo</span>
+              <span class="tl-sub" id="toggle-sub-${key}">Mostra De R$ ${p.preco_padrao} por R$ ${p.preco_promo} com % de desconto</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-field="mostrar_promo" ${promoAtiva ? 'checked' : ''} onchange="togglePromo('${key}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          ${camposPromo}
+          <div class="desconto-tag promo ${promoAtiva && pctPromo ? 'visible' : ''}" id="desc-promo-${key}">
+            <span>Desconto exibido ao cliente:</span>
+            <strong id="pct-promo-${key}">${pctPromo ? pctPromo + '% off' : '—'}</strong>
+          </div>
+        </div>
+        ${secaoAlunos}
+      </div>
     `;
 
     container.appendChild(card);
@@ -513,35 +483,31 @@ function togglePromo(key, ativo) {
 
 function recalcular(key) {
   const card = document.querySelector(`.card[data-key="${key}"]`);
-  const padrao = card.querySelector('[data-field="preco_padrao"]')?.value;
-  const promo = card.querySelector('[data-field="preco_promo"]')?.value;
-  const alunos = card.querySelector('[data-field="preco_alunos"]')?.value;
+  const padrao = getVal(card, 'preco_padrao');
+  const promo = getVal(card, 'preco_promo');
+  const alunos = getVal(card, 'preco_alunos');
   const promoCheck = card.querySelector('[data-field="mostrar_promo"]');
+
+  // Atualiza subtítulo do toggle dinamicamente
+  const sub = document.getElementById(`toggle-sub-${key}`);
+  if (sub) sub.textContent = `Mostra De R$ ${padrao || '?'} por R$ ${promo || '?'} com % de desconto`;
 
   // Desconto promo
   const elDescPromo = document.getElementById(`desc-promo-${key}`);
   const elPctPromo = document.getElementById(`pct-promo-${key}`);
   if (elDescPromo && elPctPromo && promoCheck?.checked) {
     const pct = calcDesconto(padrao, promo);
-    if (pct) {
-      elPctPromo.textContent = pct + '% off';
-      elDescPromo.classList.add('visible');
-    } else {
-      elDescPromo.classList.remove('visible');
-    }
+    if (pct) { elPctPromo.textContent = pct + '% off'; elDescPromo.classList.add('visible'); }
+    else { elDescPromo.classList.remove('visible'); }
   }
 
   // Desconto alunos
   const elDescAlunos = document.getElementById(`desc-alunos-${key}`);
   const elPctAlunos = document.getElementById(`pct-alunos-${key}`);
-  if (elDescAlunos && elPctAlunos) {
+  if (elDescAlunos && elPctAlunos && alunos) {
     const pct = calcDesconto(padrao, alunos);
-    if (pct) {
-      elPctAlunos.textContent = pct + '% off';
-      elDescAlunos.classList.add('visible');
-    } else {
-      elDescAlunos.classList.remove('visible');
-    }
+    if (pct) { elPctAlunos.textContent = pct + '% off'; elDescAlunos.classList.add('visible'); }
+    else { elDescAlunos.classList.remove('visible'); }
   }
 }
 
@@ -551,11 +517,7 @@ function coletarDados() {
     const key = card.dataset.key;
     card.querySelectorAll('[data-field]').forEach(input => {
       const field = input.dataset.field;
-      if (input.type === 'checkbox') {
-        resultado[key][field] = input.checked;
-      } else {
-        resultado[key][field] = input.value.trim();
-      }
+      resultado[key][field] = input.type === 'checkbox' ? input.checked : input.value.trim();
     });
   });
   return resultado;
