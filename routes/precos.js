@@ -30,7 +30,6 @@ router.get('/precos', (req, res) => {
             const p = precos[key];
 
             if (p.tipo === 'promo') {
-                // Teste de Prosperidade: padrão e promo apenas
                 if (p.mostrar_promo) {
                     p.exibir_de = p.preco_padrao;
                     p.exibir_avista = p.preco_promo;
@@ -44,16 +43,21 @@ router.get('/precos', (req, res) => {
                 if (p.mostrar_promo) {
                     p.exibir_de = p.preco_padrao;
                     p.exibir_avista = p.preco_promo;
+                    p.exibir_parcelas_qtd = p.parcelas_qtd_promo || p.parcelas_qtd;
                     p.exibir_parcelas_valor = p.parcelas_valor_promo;
                     p.desconto_pct = calcularDesconto(p.preco_padrao, p.preco_promo);
                 } else {
                     p.exibir_de = null;
                     p.exibir_avista = p.preco_padrao;
+                    p.exibir_parcelas_qtd = p.parcelas_qtd;
                     p.exibir_parcelas_valor = p.parcelas_valor_padrao;
                     p.desconto_pct = null;
                 }
-                // Alunos sempre disponível via funil
                 p.alunos_desconto_pct = calcularDesconto(p.preco_padrao, p.preco_alunos);
+                p.alunos_parcelas_qtd = p.parcelas_qtd_alunos || p.parcelas_qtd;
+            } else if (p.tipo === 'comunidade') {
+                p.desconto_ouro_pct = calcularDesconto(p.preco_ouro, p.preco_ouro_promo);
+                p.desconto_magico_pct = calcularDesconto(p.preco_magico, p.preco_magico_promo);
             }
         });
 
