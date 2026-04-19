@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão de Preços — Suellen Seragi</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8D5A3;
+    --gold-dark: #8B6914;
+    --green: #8BA75F;
+    --blue: #008AFC;
+    --bg: #0F0E0B;
+    --bg2: #1A1813;
+    --bg3: #242118;
+    --border: rgba(201,168,76,0.15);
+    --border-hover: rgba(201,168,76,0.35);
+    --text: #F0EAD6;
+    --text-muted: #8A8070;
+    --red: #E05555;
+    --success: #5A9E6F;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* ── BACKGROUND TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,168,76,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 30% at 90% 80%, rgba(139,167,95,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    opacity: 0.6;
+  }
+
+  .logo-line {
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .logo-diamond {
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    transform: rotate(45deg);
+  }
+
+  header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: var(--gold-light);
+    margin-bottom: 8px;
+  }
+
+  header p {
+    color: var(--text-muted);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    padding: 14px 22px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+
+  #toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  #toast.success {
+    background: rgba(90,158,111,0.15);
+    border: 1px solid rgba(90,158,111,0.4);
+    color: #7FD49A;
+  }
+
+  #toast.error {
+    background: rgba(224,85,85,0.15);
+    border: 1px solid rgba(224,85,85,0.4);
+    color: #F09090;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover {
+    border-color: var(--border-hover);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--gold-light);
+    letter-spacing: 0.02em;
+  }
+
+  .card-badge {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(201,168,76,0.08);
+    color: var(--gold);
+    border: 1px solid rgba(201,168,76,0.2);
+  }
+
+  /* ── CAMPOS ── */
+  .fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .fields-grid.three {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .field.full {
+    grid-column: 1 / -1;
+  }
+
+  label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  input[type="text"] {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+
+  input[type="text"]:focus {
+    outline: none;
+    border-color: rgba(201,168,76,0.5);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.06);
+  }
+
+  /* ── PROMO TOGGLE ── */
+  .promo-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .promo-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .promo-label-group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .promo-label-group span:first-child {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .promo-label-group span:last-child {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Toggle switch */
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    top: 3px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: all 0.25s;
+  }
+
+  .toggle input:checked + .toggle-slider {
+    background: rgba(201,168,76,0.15);
+    border-color: rgba(201,168,76,0.5);
+  }
+
+  .toggle input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+    background: var(--gold);
+  }
+
+  .promo-fields {
+    display: none;
+  }
+
+  .promo-fields.visible {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Desconto preview */
+  .desconto-preview {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(201,168,76,0.06);
+    border-radius: 6px;
+    border: 1px solid rgba(201,168,76,0.12);
+  }
+
+  .desconto-preview.visible {
+    display: flex;
+  }
+
+  .desconto-preview span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .desconto-preview strong {
+    font-size: 14px;
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  /* ── SEÇÃO DE DESCONTO PADRÃO ── */
+  .desconto-padrao-preview {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(139,167,95,0.06);
+    border-radius: 6px;
+    border: 1px solid rgba(139,167,95,0.12);
+  }
+
+  .desconto-padrao-preview.visible {
+    display: flex;
+  }
+
+  .desconto-padrao-preview span {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .desconto-padrao-preview strong {
+    font-size: 14px;
+    color: var(--green);
+    font-weight: 500;
+  }
+
+  /* ── BOTÃO SALVAR ── */
+  .save-bar {
+    position: sticky;
+    bottom: 24px;
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+    z-index: 10;
+  }
+
+  .btn-save {
+    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+    color: var(--bg);
+    border: none;
+    border-radius: 50px;
+    padding: 16px 52px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 24px rgba(201,168,76,0.2);
+  }
+
+  .btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(201,168,76,0.35);
+  }
+
+  .btn-save:active {
+    transform: translateY(0);
+  }
+
+  .btn-save:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── LOADING ── */
+  .loading {
+    text-align: center;
+    padding: 80px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+  }
+
+  @media (max-width: 600px) {
+    .fields-grid, .fields-grid.three, .promo-fields.visible {
+      grid-template-columns: 1fr;
+    }
+    .card { padding: 20px; }
+    header h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="container">
+  <header>
+    <div class="logo-mark">
+      <div class="logo-line"></div>
+      <div class="logo-diamond"></div>
+      <div class="logo-line"></div>
+    </div>
+    <h1>Gestão de Preços</h1>
+    <p>Suellen Seragi · Painel Interno</p>
+  </header>
+
+  <div id="produtos-container">
+    <div class="loading">Carregando preços...</div>
+  </div>
+
+  <div class="save-bar">
+    <button class="btn-save" onclick="salvar()" id="btn-salvar">Salvar Alterações</button>
+  </div>
+</div>
+
+<script>
+let dados = {};
+
+// ── CALCULAR % DESCONTO ──
+function calcDesconto(de, por) {
+  const vDe = parseFloat(String(de).replace(',', '.'));
+  const vPor = parseFloat(String(por).replace(',', '.'));
+  if (!vDe || !vPor || vPor >= vDe) return null;
+  return Math.round(((vDe - vPor) / vDe) * 100);
+}
+
+// ── RENDERIZAR PRODUTOS ──
+function renderizar(precos) {
+  const container = document.getElementById('produtos-container');
+  container.innerHTML = '';
+
+  Object.entries(precos).forEach(([key, p]) => {
+    const temPromoCampo = p.tem_preco_de;
+    const promoAtiva = p.promo_ativa || false;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.key = key;
+
+    // Badge
+    let badge = 'Produto';
+    if (!p.tem_parcelamento && !p.tem_preco_de) badge = 'Preço único';
+    else if (p.tem_parcelamento && !p.tem_preco_de) badge = 'Com parcelamento';
+    else if (p.tem_preco_de) badge = 'Com promoção';
+
+    // Desconto padrão preview
+    let descontoPadrao = '';
+    if (p.tem_preco_de) {
+      const pct = calcDesconto(p.preco_de, p.preco_avista);
+      descontoPadrao = `
+        <div class="desconto-padrao-preview ${pct ? 'visible' : ''}" id="desc-padrao-${key}">
+          <span>Desconto padrão:</span>
+          <strong id="pct-padrao-${key}">${pct ? pct + '% off' : '—'}</strong>
+        </div>
+      `;
+    }
+
+    // Desconto promo preview
+    let descontoPromo = '';
+    if (temPromoCampo) {
+      const pct = calcDesconto(p.preco_de, p.promo_avista);
+      descontoPromo = `
+        <div class="desconto-preview ${promoAtiva && pct ? 'visible' : ''}" id="desc-promo-${key}">
+          <span>Desconto exibido ao cliente:</span>
+          <strong id="pct-promo-${key}">${pct ? pct + '% off' : '—'}</strong>
+        </div>
+      `;
+    }
+
+    // Campos de parcelamento
+    let camposParcelamento = '';
+    if (p.tem_parcelamento) {
+      camposParcelamento = `
+        <div class="field">
+          <label>Nº de Parcelas</label>
+          <input type="text" data-field="parcelas_qtd" value="${p.parcelas_qtd || 12}">
+        </div>
+        <div class="field">
+          <label>Valor da Parcela (R$)</label>
+          <input type="text" data-field="parcelas_valor" value="${p.parcelas_valor || ''}">
+        </div>
+      `;
+    }
+
+    // Seção promo
+    let secaoPromo = '';
+    if (temPromoCampo) {
+      secaoPromo = `
+        <div class="promo-section">
+          <div class="promo-toggle-row">
+            <div class="promo-label-group">
+              <span>Preço Promocional</span>
+              <span>Ativa o preço promo e exibe o % de desconto</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" data-field="promo_ativa" ${promoAtiva ? 'checked' : ''} onchange="togglePromo('${key}', this.checked)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
+            <div class="field">
+              <label>À vista Promo (R$)</label>
+              <input type="text" data-field="promo_avista" value="${p.promo_avista || ''}" oninput="atualizarDescontoPromo('${key}')">
+            </div>
+            <div class="field">
+              <label>Parcela Promo (R$)</label>
+              <input type="text" data-field="promo_parcelas_valor" value="${p.promo_parcelas_valor || ''}">
+            </div>
+          </div>
+          ${descontoPromo}
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title">${p.nome}</div>
+        <div class="card-badge">${badge}</div>
+      </div>
+      <div class="fields-grid">
+        ${p.tem_preco_de ? `
+        <div class="field">
+          <label>Preço "De" (R$)</label>
+          <input type="text" data-field="preco_de" value="${p.preco_de || ''}" oninput="atualizarDescontoPadrao('${key}')">
+        </div>
+        ` : ''}
+        <div class="field">
+          <label>${p.tem_preco_de ? 'À vista Padrão (R$)' : 'Preço à vista (R$)'}</label>
+          <input type="text" data-field="preco_avista" value="${p.preco_avista || ''}" oninput="atualizarDescontoPadrao('${key}')">
+        </div>
+        ${camposParcelamento}
+      </div>
+      ${descontoPadrao}
+      ${secaoPromo}
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// ── TOGGLE PROMO ──
+function togglePromo(key, ativo) {
+  const fields = document.getElementById(`promo-fields-${key}`);
+  const descPromo = document.getElementById(`desc-promo-${key}`);
+  if (ativo) {
+    fields.classList.add('visible');
+    atualizarDescontoPromo(key);
+  } else {
+    fields.classList.remove('visible');
+    if (descPromo) descPromo.classList.remove('visible');
+  }
+}
+
+// ── ATUALIZAR DESCONTO PADRÃO AO DIGITAR ──
+function atualizarDescontoPadrao(key) {
+  const card = document.querySelector(`.card[data-key="${key}"]`);
+  const de = card.querySelector('[data-field="preco_de"]')?.value;
+  const por = card.querySelector('[data-field="preco_avista"]')?.value;
+  const el = document.getElementById(`desc-padrao-${key}`);
+  const elPct = document.getElementById(`pct-padrao-${key}`);
+  if (!el || !elPct) return;
+  const pct = calcDesconto(de, por);
+  if (pct) {
+    elPct.textContent = pct + '% off';
+    el.classList.add('visible');
+  } else {
+    el.classList.remove('visible');
+  }
+}
+
+// ── ATUALIZAR DESCONTO PROMO AO DIGITAR ──
+function atualizarDescontoPromo(key) {
+  const card = document.querySelector(`.card[data-key="${key}"]`);
+  const de = card.querySelector('[data-field="preco_de"]')?.value;
+  const por = card.querySelector('[data-field="promo_avista"]')?.value;
+  const el = document.getElementById(`desc-promo-${key}`);
+  const elPct = document.getElementById(`pct-promo-${key}`);
+  if (!el || !elPct) return;
+  const promoCheck = card.querySelector('[data-field="promo_ativa"]');
+  if (!promoCheck?.checked) return;
+  const pct = calcDesconto(de, por);
+  if (pct) {
+    elPct.textContent = pct + '% off';
+    el.classList.add('visible');
+  } else {
+    el.classList.remove('visible');
+  }
+}
+
+// ── COLETAR DADOS DOS CAMPOS ──
+function coletarDados() {
+  const resultado = JSON.parse(JSON.stringify(dados));
+  document.querySelectorAll('.card[data-key]').forEach(card => {
+    const key = card.dataset.key;
+    card.querySelectorAll('[data-field]').forEach(input => {
+      const field = input.dataset.field;
+      if (input.type === 'checkbox') {
+        resultado[key][field] = input.checked;
+      } else {
+        resultado[key][field] = input.value.trim();
+      }
+    });
+  });
+  return resultado;
+}
+
+// ── TOAST ──
+function showToast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${tipo}`;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// ── SALVAR ──
+async function salvar() {
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  try {
+    const payload = coletarDados();
+    const resp = await fetch('/admin/precos/salvar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) throw new Error('Erro ao salvar');
+    dados = payload;
+    showToast('✓ Preços atualizados com sucesso', 'success');
+  } catch (err) {
+    showToast('✗ Erro ao salvar. Tente novamente.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar Alterações';
+  }
+}
+
+// ── CARREGAR ──
+async function carregar() {
+  try {
+    const resp = await fetch('/admin/precos/dados');
+    if (!resp.ok) throw new Error('Erro ao carregar');
+    dados = await resp.json();
+    renderizar(dados);
+  } catch (err) {
+    document.getElementById('produtos-container').innerHTML = 
+      '<div class="loading">Erro ao carregar preços. Recarregue a página.</div>';
+  }
+}
+
+carregar();
+</script>
+</body>
+</html>
