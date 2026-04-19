@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 require('dotenv').config();
 
 const paymentRoutes = require('./routes/payments');
@@ -144,6 +145,7 @@ app.use('/api', adminRoutes);
 app.use('/', adminRoutes);
 app.use('/api', precosRoutes); 
 app.use('/', precosRoutes); 
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
 app.get('/api/environment', (req, res) => {
   res.status(200).json({
