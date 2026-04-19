@@ -29,26 +29,31 @@ router.get('/precos', (req, res) => {
         Object.keys(precos).forEach(key => {
             const p = precos[key];
 
-            if (p.tipo === 'curso') {
+            if (p.tipo === 'promo') {
+                // Teste de Prosperidade: padrão e promo apenas
                 if (p.mostrar_promo) {
-                    // Exibe preço promo: De 711 por 511
+                    p.exibir_de = p.preco_padrao;
+                    p.exibir_avista = p.preco_promo;
+                    p.desconto_pct = calcularDesconto(p.preco_padrao, p.preco_promo);
+                } else {
+                    p.exibir_de = null;
+                    p.exibir_avista = p.preco_padrao;
+                    p.desconto_pct = null;
+                }
+            } else if (p.tipo === 'curso') {
+                if (p.mostrar_promo) {
                     p.exibir_de = p.preco_padrao;
                     p.exibir_avista = p.preco_promo;
                     p.exibir_parcelas_valor = p.parcelas_valor_promo;
                     p.desconto_pct = calcularDesconto(p.preco_padrao, p.preco_promo);
                 } else {
-                    // Exibe preço padrão: 711 sem De/Por
                     p.exibir_de = null;
                     p.exibir_avista = p.preco_padrao;
                     p.exibir_parcelas_valor = p.parcelas_valor_padrao;
                     p.desconto_pct = null;
                 }
-                // Preço alunos sempre disponível via funil
+                // Alunos sempre disponível via funil
                 p.alunos_desconto_pct = calcularDesconto(p.preco_padrao, p.preco_alunos);
-            } else {
-                p.exibir_avista = p.preco_avista;
-                p.exibir_parcelas_valor = p.parcelas_valor || null;
-                p.desconto_pct = null;
             }
         });
 
