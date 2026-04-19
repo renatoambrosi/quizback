@@ -21,298 +21,74 @@
     --text-muted: #8A8070;
     --success: #5A9E6F;
   }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    min-height: 100vh;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,168,76,0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 30% at 90% 80%, rgba(139,167,95,0.04) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .container {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: 48px 24px 100px;
-    position: relative;
-    z-index: 1;
-  }
-
-  header {
-    text-align: center;
-    margin-bottom: 52px;
-  }
-
-  .logo-mark {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    opacity: 0.6;
-  }
-
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(201,168,76,0.06) 0%, transparent 60%), radial-gradient(ellipse 40% 30% at 90% 80%, rgba(139,167,95,0.04) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+  .container { max-width: 920px; margin: 0 auto; padding: 48px 24px 100px; position: relative; z-index: 1; }
+  header { text-align: center; margin-bottom: 52px; }
+  .logo-mark { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 20px; opacity: 0.6; }
   .logo-line { width: 40px; height: 1px; background: var(--gold); }
   .logo-diamond { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); }
-
-  header h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 36px;
-    font-weight: 300;
-    letter-spacing: 0.04em;
-    color: var(--gold-light);
-    margin-bottom: 8px;
-  }
-
-  header p {
-    color: var(--text-muted);
-    font-size: 13px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  #toast {
-    position: fixed;
-    top: 24px;
-    right: 24px;
-    padding: 14px 22px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 1000;
-    opacity: 0;
-    transform: translateY(-8px);
-    transition: all 0.3s ease;
-    pointer-events: none;
-  }
+  header h1 { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 300; letter-spacing: 0.04em; color: var(--gold-light); margin-bottom: 8px; }
+  header p { color: var(--text-muted); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  #toast { position: fixed; top: 24px; right: 24px; padding: 14px 22px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 1000; opacity: 0; transform: translateY(-8px); transition: all 0.3s ease; pointer-events: none; }
   #toast.show { opacity: 1; transform: translateY(0); }
   #toast.success { background: rgba(90,158,111,0.15); border: 1px solid rgba(90,158,111,0.4); color: #7FD49A; }
   #toast.error { background: rgba(224,85,85,0.15); border: 1px solid rgba(224,85,85,0.4); color: #F09090; }
-
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    margin-bottom: 20px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px; overflow: hidden; transition: border-color 0.2s; }
   .card:hover { border-color: var(--border-hover); }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 20px 28px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .card-img {
-    width: 64px;
-    height: 64px;
-    border-radius: 10px;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 1px solid var(--border);
-  }
-
+  .card-header { display: flex; align-items: center; gap: 20px; padding: 20px 28px; border-bottom: 1px solid var(--border); }
+  .card-img { width: 64px; height: 64px; border-radius: 10px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
   .card-title-group { flex: 1; }
-
-  .card-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 19px;
-    font-weight: 400;
-    color: var(--gold-light);
-    letter-spacing: 0.02em;
-    margin-bottom: 6px;
-  }
-
-  .card-badge {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 3px 9px;
-    border-radius: 20px;
-    background: rgba(201,168,76,0.08);
-    color: var(--gold);
-    border: 1px solid rgba(201,168,76,0.2);
-  }
-
+  .card-title { font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 400; color: var(--gold-light); letter-spacing: 0.02em; margin-bottom: 6px; }
+  .card-badge { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; background: rgba(201,168,76,0.08); color: var(--gold); border: 1px solid rgba(201,168,76,0.2); }
   .card-body { padding: 24px 28px; }
-
-  .fields-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
+  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .fields-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-
   .field { display: flex; flex-direction: column; gap: 6px; }
-
-  label {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  input[type="text"] {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 15px;
-    font-weight: 400;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    width: 100%;
-  }
-  input[type="text"]:focus {
-    outline: none;
-    border-color: rgba(201,168,76,0.5);
-    box-shadow: 0 0 0 3px rgba(201,168,76,0.06);
-  }
-
-  .secao {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  .secao-titulo {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 16px;
-  }
-
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-
+  label { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+  input[type="text"] { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 400; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; }
+  input[type="text"]:focus { outline: none; border-color: rgba(201,168,76,0.5); box-shadow: 0 0 0 3px rgba(201,168,76,0.06); }
+  .secao { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .secao-titulo { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .toggle-label-group { display: flex; flex-direction: column; gap: 3px; }
   .toggle-label-group .tl-titulo { font-size: 13px; font-weight: 500; color: var(--text); }
   .toggle-label-group .tl-sub { font-size: 11px; color: var(--text-muted); }
-
   .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
   .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider {
-    position: absolute;
-    inset: 0;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    cursor: pointer;
-    transition: all 0.25s;
-  }
-  .toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 16px; height: 16px;
-    left: 3px; top: 3px;
-    background: var(--text-muted);
-    border-radius: 50%;
-    transition: all 0.25s;
-  }
+  .toggle-slider { position: absolute; inset: 0; background: var(--bg3); border: 1px solid var(--border); border-radius: 24px; cursor: pointer; transition: all 0.25s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--text-muted); border-radius: 50%; transition: all 0.25s; }
   .toggle input:checked + .toggle-slider { background: rgba(201,168,76,0.15); border-color: rgba(201,168,76,0.5); }
   .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--gold); }
-
   .promo-fields { display: none; }
   .promo-fields.visible { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
-
-  .desconto-tag {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-  }
+  .desconto-tag { display: none; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
   .desconto-tag.visible { display: flex; }
   .desconto-tag.promo { background: rgba(201,168,76,0.06); border: 1px solid rgba(201,168,76,0.12); color: var(--text-muted); }
   .desconto-tag.promo strong { color: var(--gold); font-size: 14px; }
   .desconto-tag.alunos { background: rgba(139,167,95,0.06); border: 1px solid rgba(139,167,95,0.12); color: var(--text-muted); }
   .desconto-tag.alunos strong { color: var(--green); font-size: 14px; }
-
-  .save-bar {
-    position: sticky;
-    bottom: 24px;
-    display: flex;
-    justify-content: center;
-    margin-top: 32px;
-    z-index: 10;
-  }
-
-  .btn-save {
-    background: linear-gradient(135deg, var(--gold-dark), var(--gold));
-    color: var(--bg);
-    border: none;
-    border-radius: 50px;
-    padding: 16px 52px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 24px rgba(201,168,76,0.2);
-  }
+  .save-bar { position: sticky; bottom: 24px; display: flex; justify-content: center; margin-top: 32px; z-index: 10; }
+  .btn-save { background: linear-gradient(135deg, var(--gold-dark), var(--gold)); color: var(--bg); border: none; border-radius: 50px; padding: 16px 52px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 24px rgba(201,168,76,0.2); }
   .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(201,168,76,0.35); }
   .btn-save:active { transform: translateY(0); }
   .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-
   .loading { text-align: center; padding: 80px 0; color: var(--text-muted); font-size: 14px; }
-
-  @media (max-width: 600px) {
-    .fields-grid, .fields-grid.three, .promo-fields.visible { grid-template-columns: 1fr; }
-    .card-body, .card-header { padding: 16px 18px; }
-    header h1 { font-size: 28px; }
-  }
+  @media (max-width: 600px) { .fields-grid, .fields-grid.three, .promo-fields.visible { grid-template-columns: 1fr; } .card-body, .card-header { padding: 16px 18px; } header h1 { font-size: 28px; } }
 </style>
 </head>
 <body>
-
 <div id="toast"></div>
-
 <div class="container">
   <header>
-    <div class="logo-mark">
-      <div class="logo-line"></div>
-      <div class="logo-diamond"></div>
-      <div class="logo-line"></div>
-    </div>
+    <div class="logo-mark"><div class="logo-line"></div><div class="logo-diamond"></div><div class="logo-line"></div></div>
     <h1>Gestão de Preços</h1>
     <p>Suellen Seragi · Painel Interno</p>
   </header>
-
-  <div id="produtos-container">
-    <div class="loading">Carregando preços...</div>
-  </div>
-
-  <div class="save-bar">
-    <button class="btn-save" onclick="salvar()" id="btn-salvar">Salvar Alterações</button>
-  </div>
+  <div id="produtos-container"><div class="loading">Carregando preços...</div></div>
+  <div class="save-bar"><button class="btn-save" onclick="salvar()" id="btn-salvar">Salvar Alterações</button></div>
 </div>
-
 <script>
 let dados = {};
 
@@ -322,7 +98,10 @@ const IMAGENS = {
   atal_maneira_livro: '/images/atal-maneira-livro.png',
   ouro_reprogramacao: '/images/ouro-reprogramacao.png',
   lda_biblica: '/images/lda-biblica.png',
-  atal_maneira_curso: '/images/atal-maneira-curso.png'
+  atal_maneira_curso: '/images/atal-maneira-curso.png',
+  vencendo_medo: '/images/vencendo-medo.png',
+  clube_vida_magica: '/images/clube-vida-magica.png',
+  magica_fluir: '/images/magica-fluir.png'
 };
 
 function calcDesconto(de, por) {
@@ -334,6 +113,107 @@ function calcDesconto(de, por) {
 
 function getVal(card, field) {
   return card.querySelector(`[data-field="${field}"]`)?.value || '';
+}
+
+function camposPadrao(key, p) {
+  if (p.tipo === 'promo') {
+    return `<div class="fields-grid"><div class="field"><label>Preço Padrão (R$)</label><input type="text" data-field="preco_padrao" value="${p.preco_padrao}" oninput="recalcular('${key}')"></div></div>`;
+  }
+  if (p.tipo === 'curso') {
+    return `<div class="fields-grid three">
+      <div class="field"><label>Preço Padrão (R$)</label><input type="text" data-field="preco_padrao" value="${p.preco_padrao}" oninput="recalcular('${key}')"></div>
+      <div class="field"><label>Nº Parcelas</label><input type="text" data-field="parcelas_qtd" value="${p.parcelas_qtd}"></div>
+      <div class="field"><label>Parcela Padrão (R$)</label><input type="text" data-field="parcelas_valor_padrao" value="${p.parcelas_valor_padrao}"></div>
+    </div>`;
+  }
+  return '';
+}
+
+function camposPromo(key, p) {
+  const promoAtiva = p.mostrar_promo || false;
+  const pctPromo = calcDesconto(p.preco_padrao, p.preco_promo);
+
+  if (p.tipo === 'promo') {
+    return `<div class="secao">
+      <div class="toggle-row">
+        <div class="toggle-label-group">
+          <span class="tl-titulo">Exibir Preço Promo</span>
+          <span class="tl-sub" id="toggle-sub-${key}">Mostra De R$ ${p.preco_padrao} por R$ ${p.preco_promo} com % de desconto</span>
+        </div>
+        <label class="toggle"><input type="checkbox" data-field="mostrar_promo" ${promoAtiva ? 'checked' : ''} onchange="togglePromo('${key}', this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
+        <div class="field"><label>Preço Promo (R$)</label><input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')"></div>
+      </div>
+      <div class="desconto-tag promo ${promoAtiva && pctPromo ? 'visible' : ''}" id="desc-promo-${key}">
+        <span>Desconto exibido:</span><strong id="pct-promo-${key}">${pctPromo ? pctPromo + '% off' : '—'}</strong>
+      </div>
+    </div>`;
+  }
+
+  if (p.tipo === 'curso') {
+    return `<div class="secao">
+      <div class="toggle-row">
+        <div class="toggle-label-group">
+          <span class="tl-titulo">Exibir Preço Promo</span>
+          <span class="tl-sub" id="toggle-sub-${key}">Mostra De R$ ${p.preco_padrao} por R$ ${p.preco_promo} com % de desconto</span>
+        </div>
+        <label class="toggle"><input type="checkbox" data-field="mostrar_promo" ${promoAtiva ? 'checked' : ''} onchange="togglePromo('${key}', this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
+        <div class="field"><label>Preço Promo à vista (R$)</label><input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')"></div>
+        <div class="field"><label>Parcela Promo (R$)</label><input type="text" data-field="parcelas_valor_promo" value="${p.parcelas_valor_promo || ''}"></div>
+        ${p.parcelas_qtd_promo !== undefined ? `<div class="field"><label>Nº Parcelas Promo</label><input type="text" data-field="parcelas_qtd_promo" value="${p.parcelas_qtd_promo}"></div>` : ''}
+      </div>
+      <div class="desconto-tag promo ${promoAtiva && pctPromo ? 'visible' : ''}" id="desc-promo-${key}">
+        <span>Desconto exibido:</span><strong id="pct-promo-${key}">${pctPromo ? pctPromo + '% off' : '—'}</strong>
+      </div>
+    </div>`;
+  }
+
+  return '';
+}
+
+function camposAlunos(key, p) {
+  if (p.tipo !== 'curso') return '';
+  const pctAlunos = calcDesconto(p.preco_padrao, p.preco_alunos);
+  return `<div class="secao">
+    <div class="secao-titulo">Preço Alunos — exibido via funil</div>
+    <div class="fields-grid ${p.parcelas_valor_alunos ? 'three' : ''}">
+      <div class="field"><label>Preço Alunos à vista (R$)</label><input type="text" data-field="preco_alunos" value="${p.preco_alunos}" oninput="recalcular('${key}')"></div>
+      ${p.parcelas_valor_alunos !== null ? `<div class="field"><label>Parcela Alunos (R$)</label><input type="text" data-field="parcelas_valor_alunos" value="${p.parcelas_valor_alunos || ''}"></div>` : ''}
+      ${p.parcelas_qtd_alunos !== undefined && p.parcelas_qtd_alunos !== null ? `<div class="field"><label>Nº Parcelas Alunos</label><input type="text" data-field="parcelas_qtd_alunos" value="${p.parcelas_qtd_alunos}"></div>` : ''}
+    </div>
+    <div class="desconto-tag alunos ${pctAlunos ? 'visible' : ''}" id="desc-alunos-${key}">
+      <span>Desconto exibido ao aluno:</span><strong id="pct-alunos-${key}">${pctAlunos ? pctAlunos + '% off' : '—'}</strong>
+    </div>
+  </div>`;
+}
+
+function camposComunidade(key, p) {
+  const pctOuro = calcDesconto(p.preco_ouro, p.preco_ouro_promo);
+  const pctMagico = calcDesconto(p.preco_magico, p.preco_magico_promo);
+  return `
+    <div class="secao">
+      <div class="secao-titulo">Plano Ouro</div>
+      <div class="fields-grid">
+        <div class="field"><label>Preço Ouro (R$)</label><input type="text" data-field="preco_ouro" value="${p.preco_ouro}" oninput="recalcular('${key}')"></div>
+        <div class="field"><label>Preço Ouro Promo (R$)</label><input type="text" data-field="preco_ouro_promo" value="${p.preco_ouro_promo}" oninput="recalcular('${key}')"></div>
+      </div>
+      <div class="desconto-tag promo ${pctOuro ? 'visible' : ''}" id="desc-ouro-${key}">
+        <span>Desconto Ouro:</span><strong id="pct-ouro-${key}">${pctOuro ? pctOuro + '% off' : '—'}</strong>
+      </div>
+    </div>
+    <div class="secao">
+      <div class="secao-titulo">Plano Mágico</div>
+      <div class="fields-grid">
+        <div class="field"><label>Preço Mágico (R$)</label><input type="text" data-field="preco_magico" value="${p.preco_magico}" oninput="recalcular('${key}')"></div>
+        <div class="field"><label>Preço Mágico Promo (R$)</label><input type="text" data-field="preco_magico_promo" value="${p.preco_magico_promo}" oninput="recalcular('${key}')"></div>
+      </div>
+      <div class="desconto-tag alunos ${pctMagico ? 'visible' : ''}" id="desc-magico-${key}">
+        <span>Desconto Mágico:</span><strong id="pct-magico-${key}">${pctMagico ? pctMagico + '% off' : '—'}</strong>
+      </div>
+    </div>`;
 }
 
 function renderizar(precos) {
@@ -348,122 +228,20 @@ function renderizar(precos) {
     const imgSrc = IMAGENS[key];
     const imgTag = `<img class="card-img" src="${imgSrc}" alt="${p.nome}" onerror="this.style.display='none'">`;
 
-    const badge = p.tipo === 'promo'
-      ? '2 preços disponíveis (Padrão e Promo)'
+    const badge = p.tipo === 'promo' ? '2 preços disponíveis (Padrão e Promo)'
+      : p.tipo === 'comunidade' ? 'Assinatura (Ouro e Mágico)'
       : '3 preços disponíveis (Padrão, Promo e Aluno)';
 
-    const promoAtiva = p.mostrar_promo || false;
-    const pctPromo = calcDesconto(p.preco_padrao, p.preco_promo);
-    const pctAlunos = p.tipo === 'curso' ? calcDesconto(p.preco_padrao, p.preco_alunos) : null;
-
-    // Texto dinâmico do toggle
-    const subToggle = `Mostra De R$ ${p.preco_padrao} por R$ <span class="toggle-promo-val">${p.preco_promo}</span> com % de desconto`;
-
-    // Campos padrão
-    let camposPadrao = '';
-    if (p.tipo === 'promo') {
-      camposPadrao = `
-        <div class="fields-grid">
-          <div class="field">
-            <label>Preço Padrão (R$)</label>
-            <input type="text" data-field="preco_padrao" value="${p.preco_padrao}" oninput="recalcular('${key}')">
-          </div>
-        </div>`;
+    let corpo = '';
+    if (p.tipo === 'comunidade') {
+      corpo = camposComunidade(key, p);
     } else {
-      camposPadrao = `
-        <div class="fields-grid three">
-          <div class="field">
-            <label>Preço Padrão (R$)</label>
-            <input type="text" data-field="preco_padrao" value="${p.preco_padrao}" oninput="recalcular('${key}')">
-          </div>
-          <div class="field">
-            <label>Nº de Parcelas</label>
-            <input type="text" data-field="parcelas_qtd" value="${p.parcelas_qtd}">
-          </div>
-          <div class="field">
-            <label>Parcela Padrão (R$)</label>
-            <input type="text" data-field="parcelas_valor_padrao" value="${p.parcelas_valor_padrao}">
-          </div>
-        </div>`;
-    }
-
-    // Campos promo
-    let camposPromo = '';
-    if (p.tipo === 'promo') {
-      camposPromo = `
-        <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
-          <div class="field">
-            <label>Preço Promo (R$)</label>
-            <input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')">
-          </div>
-        </div>`;
-    } else {
-      camposPromo = `
-        <div class="promo-fields ${promoAtiva ? 'visible' : ''}" id="promo-fields-${key}">
-          <div class="field">
-            <label>Preço Promo à vista (R$)</label>
-            <input type="text" data-field="preco_promo" value="${p.preco_promo}" oninput="recalcular('${key}')">
-          </div>
-          <div class="field">
-            <label>Parcela Promo (R$)</label>
-            <input type="text" data-field="parcelas_valor_promo" value="${p.parcelas_valor_promo}">
-          </div>
-        </div>`;
-    }
-
-    // Seção alunos (só para tipo curso)
-    let secaoAlunos = '';
-    if (p.tipo === 'curso') {
-      secaoAlunos = `
-        <div class="secao">
-          <div class="secao-titulo">Preço Alunos — exibido via funil</div>
-          <div class="fields-grid">
-            <div class="field">
-              <label>Preço Alunos à vista (R$)</label>
-              <input type="text" data-field="preco_alunos" value="${p.preco_alunos}" oninput="recalcular('${key}')">
-            </div>
-            <div class="field">
-              <label>Parcela Alunos (R$)</label>
-              <input type="text" data-field="parcelas_valor_alunos" value="${p.parcelas_valor_alunos}">
-            </div>
-          </div>
-          <div class="desconto-tag alunos ${pctAlunos ? 'visible' : ''}" id="desc-alunos-${key}">
-            <span>Desconto exibido ao aluno:</span>
-            <strong id="pct-alunos-${key}">${pctAlunos ? pctAlunos + '% off' : '—'}</strong>
-          </div>
-        </div>`;
+      corpo = camposPadrao(key, p) + camposPromo(key, p) + camposAlunos(key, p);
     }
 
     card.innerHTML = `
-      <div class="card-header">
-        ${imgTag}
-        <div class="card-title-group">
-          <div class="card-title">${p.nome}</div>
-          <div class="card-badge">${badge}</div>
-        </div>
-      </div>
-      <div class="card-body">
-        ${camposPadrao}
-        <div class="secao">
-          <div class="toggle-row">
-            <div class="toggle-label-group">
-              <span class="tl-titulo">Exibir Preço Promo</span>
-              <span class="tl-sub" id="toggle-sub-${key}">Mostra De R$ ${p.preco_padrao} por R$ ${p.preco_promo} com % de desconto</span>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" data-field="mostrar_promo" ${promoAtiva ? 'checked' : ''} onchange="togglePromo('${key}', this.checked)">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          ${camposPromo}
-          <div class="desconto-tag promo ${promoAtiva && pctPromo ? 'visible' : ''}" id="desc-promo-${key}">
-            <span>Desconto exibido ao cliente:</span>
-            <strong id="pct-promo-${key}">${pctPromo ? pctPromo + '% off' : '—'}</strong>
-          </div>
-        </div>
-        ${secaoAlunos}
-      </div>
-    `;
+      <div class="card-header">${imgTag}<div class="card-title-group"><div class="card-title">${p.nome}</div><div class="card-badge">${badge}</div></div></div>
+      <div class="card-body">${corpo}</div>`;
 
     container.appendChild(card);
   });
@@ -472,42 +250,47 @@ function renderizar(precos) {
 function togglePromo(key, ativo) {
   const fields = document.getElementById(`promo-fields-${key}`);
   const descPromo = document.getElementById(`desc-promo-${key}`);
-  if (ativo) {
-    fields.classList.add('visible');
-    recalcular(key);
-  } else {
-    fields.classList.remove('visible');
-    if (descPromo) descPromo.classList.remove('visible');
-  }
+  if (ativo) { fields.classList.add('visible'); recalcular(key); }
+  else { fields.classList.remove('visible'); if (descPromo) descPromo.classList.remove('visible'); }
 }
 
 function recalcular(key) {
   const card = document.querySelector(`.card[data-key="${key}"]`);
+  const p = dados[key];
+  if (!p) return;
+
+  if (p.tipo === 'comunidade') {
+    const ouro = getVal(card, 'preco_ouro');
+    const ouroPromo = getVal(card, 'preco_ouro_promo');
+    const magico = getVal(card, 'preco_magico');
+    const magicoPromo = getVal(card, 'preco_magico_promo');
+    const elOuro = document.getElementById(`desc-ouro-${key}`);
+    const elMagico = document.getElementById(`desc-magico-${key}`);
+    if (elOuro) { const pct = calcDesconto(ouro, ouroPromo); if (pct) { document.getElementById(`pct-ouro-${key}`).textContent = pct + '% off'; elOuro.classList.add('visible'); } else elOuro.classList.remove('visible'); }
+    if (elMagico) { const pct = calcDesconto(magico, magicoPromo); if (pct) { document.getElementById(`pct-magico-${key}`).textContent = pct + '% off'; elMagico.classList.add('visible'); } else elMagico.classList.remove('visible'); }
+    return;
+  }
+
   const padrao = getVal(card, 'preco_padrao');
   const promo = getVal(card, 'preco_promo');
   const alunos = getVal(card, 'preco_alunos');
   const promoCheck = card.querySelector('[data-field="mostrar_promo"]');
 
-  // Atualiza subtítulo do toggle dinamicamente
   const sub = document.getElementById(`toggle-sub-${key}`);
   if (sub) sub.textContent = `Mostra De R$ ${padrao || '?'} por R$ ${promo || '?'} com % de desconto`;
 
-  // Desconto promo
   const elDescPromo = document.getElementById(`desc-promo-${key}`);
   const elPctPromo = document.getElementById(`pct-promo-${key}`);
   if (elDescPromo && elPctPromo && promoCheck?.checked) {
     const pct = calcDesconto(padrao, promo);
-    if (pct) { elPctPromo.textContent = pct + '% off'; elDescPromo.classList.add('visible'); }
-    else { elDescPromo.classList.remove('visible'); }
+    if (pct) { elPctPromo.textContent = pct + '% off'; elDescPromo.classList.add('visible'); } else elDescPromo.classList.remove('visible');
   }
 
-  // Desconto alunos
   const elDescAlunos = document.getElementById(`desc-alunos-${key}`);
   const elPctAlunos = document.getElementById(`pct-alunos-${key}`);
   if (elDescAlunos && elPctAlunos && alunos) {
     const pct = calcDesconto(padrao, alunos);
-    if (pct) { elPctAlunos.textContent = pct + '% off'; elDescAlunos.classList.add('visible'); }
-    else { elDescAlunos.classList.remove('visible'); }
+    if (pct) { elPctAlunos.textContent = pct + '% off'; elDescAlunos.classList.add('visible'); } else elDescAlunos.classList.remove('visible');
   }
 }
 
@@ -536,11 +319,7 @@ async function salvar() {
   btn.textContent = 'Salvando...';
   try {
     const payload = coletarDados();
-    const resp = await fetch('/admin/precos/salvar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    const resp = await fetch('/admin/precos/salvar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!resp.ok) throw new Error('Erro ao salvar');
     dados = payload;
     showToast('✓ Preços atualizados com sucesso', 'success');
@@ -559,8 +338,7 @@ async function carregar() {
     dados = await resp.json();
     renderizar(dados);
   } catch (err) {
-    document.getElementById('produtos-container').innerHTML =
-      '<div class="loading">Erro ao carregar preços. Recarregue a página.</div>';
+    document.getElementById('produtos-container').innerHTML = '<div class="loading">Erro ao carregar preços. Recarregue a página.</div>';
   }
 }
 
