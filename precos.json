@@ -1,63 +1,57 @@
 {
   "teste_prosperidade": {
     "nome": "Teste de Prosperidade",
-    "preco_avista": "19,00",
-    "tem_parcelamento": false,
-    "tem_preco_de": false,
-    "promo_ativa": false
+    "tipo": "simples",
+    "preco_avista": "19,00"
   },
   "guia_pratico": {
     "nome": "E-Book: Guia Prático para Reprogramar a Mente",
+    "tipo": "parcelado",
     "preco_avista": "84,11",
-    "tem_parcelamento": true,
     "parcelas_qtd": 12,
-    "parcelas_valor": "8,70",
-    "tem_preco_de": false,
-    "promo_ativa": false
+    "parcelas_valor": "8,70"
   },
   "atal_maneira_livro": {
     "nome": "Livro Digital A Tal Maneira + Audiobook + Aulão",
+    "tipo": "parcelado",
     "preco_avista": "137,88",
-    "tem_parcelamento": true,
     "parcelas_qtd": 12,
-    "parcelas_valor": "14,26",
-    "tem_preco_de": false,
-    "promo_ativa": false
+    "parcelas_valor": "14,26"
   },
   "ouro_reprogramacao": {
     "nome": "Curso: O Ouro da Reprogramação Mental",
-    "preco_de": "711,00",
-    "preco_avista": "511,00",
-    "tem_parcelamento": true,
+    "tipo": "curso",
+    "mostrar_promo": false,
+    "preco_padrao": "711,00",
     "parcelas_qtd": 12,
-    "parcelas_valor": "52,85",
-    "tem_preco_de": true,
-    "promo_ativa": false,
-    "promo_avista": "411,00",
-    "promo_parcelas_valor": "42,51"
+    "parcelas_valor_padrao": "52,85",
+    "preco_promo": "511,00",
+    "parcelas_valor_promo": "52,85",
+    "preco_alunos": "411,00",
+    "parcelas_valor_alunos": "42,51"
   },
   "lda_biblica": {
     "nome": "Curso: LDA Bíblica",
-    "preco_de": "711,00",
-    "preco_avista": "511,00",
-    "tem_parcelamento": true,
+    "tipo": "curso",
+    "mostrar_promo": false,
+    "preco_padrao": "711,00",
     "parcelas_qtd": 12,
-    "parcelas_valor": "52,85",
-    "tem_preco_de": true,
-    "promo_ativa": false,
-    "promo_avista": "411,00",
-    "promo_parcelas_valor": "42,51"
+    "parcelas_valor_padrao": "52,85",
+    "preco_promo": "511,00",
+    "parcelas_valor_promo": "52,85",
+    "preco_alunos": "411,00",
+    "parcelas_valor_alunos": "42,51"
   },
   "atal_maneira_curso": {
     "nome": "A Tal Maneira - O Curso Definitivo da Riqueza Bíblica",
-    "preco_de": "711,00",
-    "preco_avista": "511,00",
-    "tem_parcelamento": true,
+    "tipo": "curso",
+    "mostrar_promo": false,
+    "preco_padrao": "711,00",
     "parcelas_qtd": 12,
-    "parcelas_valor": "52,85",
-    "tem_preco_de": true,
-    "promo_ativa": false,
-    "promo_avista": "411,00",
-    "promo_parcelas_valor": "42,51"
+    "parcelas_valor_padrao": "52,85",
+    "preco_promo": "511,00",
+    "parcelas_valor_promo": "52,85",
+    "preco_alunos": "411,00",
+    "parcelas_valor_alunos": "42,51"
   }
 }
