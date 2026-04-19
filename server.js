@@ -143,6 +143,7 @@ app.use('/api', sessoesRoutes);
 app.use('/api', adminRoutes); 
 app.use('/', adminRoutes);
 app.use('/api', precosRoutes); 
+app.use('/', precosRoutes); 
 
 app.get('/api/environment', (req, res) => {
   res.status(200).json({
