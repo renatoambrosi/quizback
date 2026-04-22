@@ -41,6 +41,8 @@ app.use(cors({
     'https://agendamento.suellenseragi.com.br',
     'http://localhost:3000',
     'http://localhost:5173',
+    'https://vidamagica.vercel.app',
+    'https://www.vidamagica.com.br',
     'https://api.mercadopago.com'
   ],
   credentials: true,
