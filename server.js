@@ -43,6 +43,7 @@ app.use(cors({
     'http://localhost:5173',
     'https://vidamagica.vercel.app',
     'https://www.vidamagica.com.br',
+    'https://pagamento.suellenseragi.com.br',
     'https://api.mercadopago.com'
   ],
   credentials: true,
