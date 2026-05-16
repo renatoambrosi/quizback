@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { getMensagemConfig } = require('./db');
+const { getMensagemConfig, enviosSessaoPausados } = require('./db');
 const { emitir, EVENTOS } = require('./monitor-events');
 const { enviarViaGateway } = require('./whatsapp');
 
@@ -24,7 +24,19 @@ async function enviarNoGrupo(mensagem, origem) {
     }
 }
 
+// dispararMensagemGrupo:
+// - origem começa com 'manual_' → SEMPRE envia (admin clicou no botão)
+// - origem é um job automático (quarta/sexta/sabado_1h/sabado_15min) → checa flag
 async function dispararMensagemGrupo(chave, origem) {
+    if (!String(origem).startsWith('manual_')) {
+        const pausado = await enviosSessaoPausados();
+        if (pausado) {
+            console.log(`⏸️  Disparo automático '${origem}' CANCELADO — envios da sessão pausados pelo admin`);
+            emitir(EVENTOS.ENVIO_ERRO, { job: origem, erro: 'pausado_pelo_admin' });
+            return;
+        }
+    }
+
     const meetLink = process.env.GOOGLE_MEET_LINK || 'https://meet.google.com';
     let texto = await getMensagemConfig(chave);
     if (!texto) {
