@@ -11,9 +11,10 @@ const {
     reativarCancelado, reativarPassado,
     adicionarLead, adicionarSessao,
     registrarMensagem,
+    getConfig, setConfig, enviosSessaoPausados,
 } = require('../db');
 const { emitir, EVENTOS, registrarCliente } = require('../monitor-events');
-const { enviarViaGateway, formatarTelefone } = require('../whatsapp');
+const { enviarViaGateway, formatarTelefone, getConvitesPendentes } = require('../whatsapp');
 const { dispararMensagemGrupo, enviarNoGrupo } = require('../scheduler');
 
 // ── TEXTO FIXO — SEGUNDA CHAMADA ──
@@ -44,11 +45,50 @@ router.get('/admin', autenticar, (req, res) => {
 
 router.get('/admin/dados', autenticar, async (req, res) => {
     try {
-        const [leads, sessoes, mensagens, cancelados, passados, mensagensConfig] = await Promise.all([
+        const [leads, sessoes, mensagens, cancelados, passados, mensagensConfig, pausado] = await Promise.all([
             listarLeads(), listarSessoes(), listarMensagensEnviadas(),
-            listarCancelados(), listarPassados(), listarMensagensConfig()
+            listarCancelados(), listarPassados(), listarMensagensConfig(),
+            enviosSessaoPausados()
         ]);
-        res.json({ leads, sessoes, mensagens, cancelados, passados, mensagensConfig });
+        const convitesPendentes = getConvitesPendentes();
+        res.json({
+            leads, sessoes, mensagens, cancelados, passados, mensagensConfig,
+            envios_sessao_pausados: pausado,
+            convites_pendentes: convitesPendentes
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── CONFIG: PAUSA DOS ENVIOS DA SESSÃO ──
+
+router.get('/admin/config/envios-sessao', autenticar, async (req, res) => {
+    try {
+        const pausado = await enviosSessaoPausados();
+        res.json({ pausado, convites_pendentes: getConvitesPendentes() });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/admin/config/envios-sessao', autenticar, async (req, res) => {
+    try {
+        const { pausado } = req.body;
+        if (typeof pausado !== 'boolean') {
+            return res.status(400).json({ error: 'Campo "pausado" (boolean) obrigatório' });
+        }
+        await setConfig('envios_sessao_pausados', pausado ? 'true' : 'false');
+        console.log(`🔧 Envios da sessão → ${pausado ? 'PAUSADOS' : 'ATIVOS'} (admin)`);
+        res.json({ success: true, pausado });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.get('/admin/convites-pendentes', autenticar, (req, res) => {
+    try {
+        res.json({ convites: getConvitesPendentes() });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -175,6 +215,7 @@ router.delete('/admin/passado/:id', autenticar, async (req, res) => {
 });
 
 // ── ENVIO MANUAL INDIVIDUAL ──
+// SEMPRE FUNCIONA — não é afetado pela pausa (admin clicou no botão)
 
 router.post('/admin/enviar', autenticar, async (req, res) => {
     try {
@@ -224,6 +265,8 @@ router.put('/admin/mensagem/:chave', autenticar, async (req, res) => {
 });
 
 // ── DISPARO MANUAL PARA O GRUPO ──
+// SEMPRE FUNCIONA — não é afetado pela pausa (admin clicou no botão)
+// O prefixo 'manual_' garante que dispararMensagemGrupo não verifique a flag
 
 router.post('/admin/grupo/disparar/:chave', autenticar, async (req, res) => {
     try {
