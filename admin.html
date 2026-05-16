@@ -88,6 +88,26 @@
     .hist-nome { font-weight: 600; }
     .hist-preview { color: #9a9480; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hist-ts { font-size: 0.68rem; color: #9a9480; flex-shrink: 0; }
+
+    /* ── CARD DE PAUSA ── */
+    .pausa-card { background: white; border: 1px solid #e8e3d0; border-radius: 10px; padding: 18px 22px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; transition: border-color 0.2s, background 0.2s; }
+    .pausa-card.pausado { border-color: #c62828; background: #fff5f5; }
+    .pausa-info { flex: 1; min-width: 240px; }
+    .pausa-titulo { font-size: 0.95rem; font-weight: 700; color: #2d2a1e; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .pausa-status-pill { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 12px; letter-spacing: 0.02em; }
+    .pausa-status-pill.ativo { background: #e8f5e9; color: #2e7d32; }
+    .pausa-status-pill.pausado { background: #ffebee; color: #c62828; }
+    .pausa-sub { font-size: 0.78rem; color: #6b6347; line-height: 1.5; margin-top: 4px; }
+    .pausa-sub strong { color: #2d2a1e; }
+    .pausa-detalhes { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; font-size: 0.72rem; color: #9a9480; }
+    .pausa-detalhe-item { display: flex; align-items: center; gap: 4px; }
+    .toggle-switch { position: relative; display: inline-block; width: 56px; height: 30px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #d5cdb8; transition: 0.25s; border-radius: 30px; }
+    .toggle-slider::before { content: ''; position: absolute; height: 22px; width: 22px; left: 4px; top: 4px; background: white; transition: 0.25s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .toggle-switch input:checked + .toggle-slider { background: #c62828; }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(26px); }
+    .toggle-switch input:disabled + .toggle-slider { opacity: 0.5; cursor: wait; }
   </style>
 </head>
 <body>
@@ -107,6 +127,28 @@
 </div>
 
 <div class="content">
+
+  <!-- ── CARD DE PAUSA DOS ENVIOS DA SESSÃO ── -->
+  <div class="pausa-card" id="pausaCard">
+    <div class="pausa-info">
+      <div class="pausa-titulo">
+        Sessão de Diagnóstico — Envios automáticos
+        <span class="pausa-status-pill ativo" id="pausaStatusPill">🟢 ATIVO</span>
+      </div>
+      <div class="pausa-sub" id="pausaSub">
+        <strong>Pausa:</strong> convite automático (30min após o resultado), confirmação automática ao agendar e mensagens automáticas do grupo (quarta/sexta/sábado).<br>
+        <strong>Continua sempre ativo:</strong> envio do resultado do teste e todos os disparos manuais (botões nos leads e na aba Mensagens).
+      </div>
+      <div class="pausa-detalhes">
+        <span class="pausa-detalhe-item">⏳ <span id="pausaContador">0</span> convite(s) pendente(s) em memória</span>
+      </div>
+    </div>
+    <label class="toggle-switch" title="Pausar/Despausar envios automáticos da sessão">
+      <input type="checkbox" id="pausaToggle" onchange="togglePausa(this)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
   <div class="stats">
     <div class="stat-card"><div class="num" id="statLeads">—</div><div class="lbl">Total leads</div></div>
     <div class="stat-card"><div class="num" id="statAguardando">—</div><div class="lbl">Aguardando convite</div></div>
@@ -283,6 +325,58 @@
     return '<span class="badge badge-yellow">⏳ Aguardando convite</span>';
   }
 
+  // ── CARD DE PAUSA ──
+  function renderPausa(pausado, convitesPendentes) {
+    const card = document.getElementById('pausaCard');
+    const pill = document.getElementById('pausaStatusPill');
+    const toggle = document.getElementById('pausaToggle');
+    const contador = document.getElementById('pausaContador');
+
+    if (pausado) {
+      card.classList.add('pausado');
+      pill.textContent = '🔴 PAUSADO';
+      pill.className = 'pausa-status-pill pausado';
+      toggle.checked = true;
+    } else {
+      card.classList.remove('pausado');
+      pill.textContent = '🟢 ATIVO';
+      pill.className = 'pausa-status-pill ativo';
+      toggle.checked = false;
+    }
+
+    contador.textContent = (convitesPendentes || []).length;
+  }
+
+  async function togglePausa(input) {
+    const novoEstado = input.checked;
+    const acao = novoEstado ? 'PAUSAR' : 'ATIVAR';
+    if (!confirm(`Tem certeza que quer ${acao} os envios automáticos da sessão?\n\n${novoEstado ? '⏸️ Vai parar: convite automático, confirmação automática e mensagens do grupo.\n✅ Continua: resultado do teste e disparos manuais.' : '✅ Vai voltar a enviar normalmente: convite, confirmação e mensagens do grupo.'}`)) {
+      input.checked = !novoEstado;
+      return;
+    }
+    input.disabled = true;
+    try {
+      const r = await fetch('/admin/config/envios-sessao', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pausado: novoEstado })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showToast(novoEstado ? '⏸️ Envios da sessão PAUSADOS' : '▶️ Envios da sessão ATIVADOS');
+        carregarDados();
+      } else {
+        input.checked = !novoEstado;
+        showToast(d.error || 'Erro ao salvar', true);
+      }
+    } catch (err) {
+      input.checked = !novoEstado;
+      showToast('Erro de conexão', true);
+    } finally {
+      input.disabled = false;
+    }
+  }
+
   async function carregarDados() {
     try {
       const resp = await fetch('/admin/dados');
@@ -298,6 +392,7 @@
       document.getElementById('statPassados').textContent = data.passados.length;
       document.getElementById('lastUpdate').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
 
+      renderPausa(data.envios_sessao_pausados, data.convites_pendentes);
       renderLeads(data);
       renderSessoes(data);
       renderCancelados(data);
