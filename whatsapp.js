@@ -19,6 +19,25 @@ async function enviarViaGateway(telefone, mensagem, nome, imediato = false) {
     );
 }
 
+// ── CONTADOR EM MEMÓRIA DE CONVITES PENDENTES ──
+// Cada item: { uid, nome, telefone, agendado_para (timestamp ms) }
+// Visível no admin via getConvitesPendentes()
+const convitesPendentes = new Map();
+
+function getConvitesPendentes() {
+    const agora = Date.now();
+    return Array.from(convitesPendentes.values())
+        .filter(c => c.agendado_para > agora)
+        .map(c => ({
+            uid: c.uid,
+            nome: c.nome,
+            telefone: c.telefone,
+            agendado_para: new Date(c.agendado_para).toISOString(),
+            minutos_restantes: Math.round((c.agendado_para - agora) / 60000)
+        }))
+        .sort((a, b) => new Date(a.agendado_para) - new Date(b.agendado_para));
+}
+
 class WhatsAppNotifier {
     constructor() {
         this.sheetUrl = process.env.GOOGLE_SHEET_URL;
@@ -34,7 +53,9 @@ class WhatsAppNotifier {
     }
 
     // ── RESULTADO DO TESTE — IMEDIATO (pula a fila) ──
-    // Após enviar o resultado, registra o lead e agenda o convite em 15 minutos
+    // SEMPRE ENVIA — não é afetado pelo toggle de pausa.
+    // Após enviar o resultado, registra o lead e agenda o convite em 30 minutos.
+    // O CONVITE checa a flag 'envios_sessao_pausados' antes de disparar.
     async enviarMensagemAprovacao(uid) {
         try {
             console.log(`📱 WhatsApp iniciando para UID: ${uid}`);
@@ -62,15 +83,35 @@ class WhatsAppNotifier {
                 console.error('❌ Erro ao registrar lead:', err.message);
             }
 
-            // Agenda convite em 15 minutos (via fila)
-            const QUINZE_MIN = 30 * 60 * 1000;
-            console.log(`⏳ Convite agendado para ${cliente.nome} em 30 minutos`);
+            // ── AGENDA CONVITE EM 30 MINUTOS ──
+            // Disparo respeita o toggle 'envios_sessao_pausados' no momento do envio.
+            const TRINTA_MIN = 30 * 60 * 1000;
+            const agendadoPara = Date.now() + TRINTA_MIN;
+
+            convitesPendentes.set(uid, {
+                uid,
+                nome: cliente.nome,
+                telefone: numeroFinal,
+                agendado_para: agendadoPara
+            });
+            console.log(`⏳ Convite agendado para ${cliente.nome} em 30 minutos (UID: ${uid})`);
+
             setTimeout(async () => {
                 try {
-                    const { getMensagemConfig, atualizarStatusLead } = require('./db');
+                    // Verifica flag de pausa no momento do disparo
+                    const { enviosSessaoPausados, getMensagemConfig, atualizarStatusLead } = require('./db');
+                    const pausado = await enviosSessaoPausados();
+
+                    if (pausado) {
+                        console.log(`⏸️  Convite para ${cliente.nome} CANCELADO — envios da sessão pausados pelo admin`);
+                        convitesPendentes.delete(uid);
+                        return;
+                    }
+
                     const textoConvite = await getMensagemConfig('convite');
                     if (!textoConvite) {
                         console.error('❌ Mensagem de convite não encontrada no banco');
+                        convitesPendentes.delete(uid);
                         return;
                     }
                     const link = `https://agendamento.suellenseragi.com.br?name=${encodeURIComponent(cliente.nome)}&ref=${encodeURIComponent(numeroFinal)}`;
@@ -82,8 +123,10 @@ class WhatsAppNotifier {
                     console.log(`✅ Convite enviado para ${cliente.nome} (${numeroFinal})`);
                 } catch (err) {
                     console.error(`❌ Erro ao enviar convite para ${cliente.nome}:`, err.message);
+                } finally {
+                    convitesPendentes.delete(uid);
                 }
-            }, QUINZE_MIN);
+            }, TRINTA_MIN);
 
         } catch (error) {
             console.error('❌ Erro WhatsApp:', error.message);
@@ -94,3 +137,4 @@ class WhatsAppNotifier {
 module.exports = WhatsAppNotifier;
 module.exports.enviarViaGateway = enviarViaGateway;
 module.exports.formatarTelefone = formatarTelefone;
+module.exports.getConvitesPendentes = getConvitesPendentes;
