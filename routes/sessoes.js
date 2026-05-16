@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const { salvarSessaoAgendada, registrarMensagem, getMensagemConfig, marcarLeadConfirmadoPorTelefone } = require('../db');
+const {
+    salvarSessaoAgendada,
+    registrarMensagem,
+    getMensagemConfig,
+    marcarLeadConfirmadoPorTelefone,
+    enviosSessaoPausados
+} = require('../db');
 
 function proximoSabado() {
     const hoje = new Date();
@@ -45,47 +51,52 @@ router.post('/agendar-sessao', async (req, res) => {
         const dataFormatada = formatarDataPtBR(sabado);
         const dataSessaoISO = sabado.toISOString().split('T')[0];
 
-        // 1. Salvar sessão no banco
+        // 1. Salvar sessão no banco (SEMPRE — independente da pausa)
         const sessaoId = await salvarSessaoAgendada(nome, numeroFinal, dataSessaoISO);
 
-        // 2. Marcar lead como confirmado
+        // 2. Marcar lead como confirmado (SEMPRE — independente da pausa)
         try {
             await marcarLeadConfirmadoPorTelefone(numeroFinal);
         } catch (err) {
             console.error('❌ Erro ao marcar lead confirmado:', err.message);
         }
 
-        // 3. Mensagem de confirmação via gateway (fila)
-        try {
-            const grupoLink = process.env.GRUPO_SESSAO_LINK;
-            if (!grupoLink) {
-                console.error('❌ GRUPO_SESSAO_LINK não configurado no Railway');
-                throw new Error('Link do grupo não configurado. Adicione GRUPO_SESSAO_LINK nas variáveis do Railway.');
-            }
+        // 3. Mensagem de confirmação automática — RESPEITA FLAG DE PAUSA
+        const pausado = await enviosSessaoPausados();
+        if (pausado) {
+            console.log(`⏸️  Confirmação automática para ${nome} NÃO enviada — envios da sessão pausados pelo admin`);
+        } else {
+            try {
+                const grupoLink = process.env.GRUPO_SESSAO_LINK;
+                if (!grupoLink) {
+                    console.error('❌ GRUPO_SESSAO_LINK não configurado no Railway');
+                    throw new Error('Link do grupo não configurado. Adicione GRUPO_SESSAO_LINK nas variáveis do Railway.');
+                }
 
-            let textoConfirmacao = await getMensagemConfig('confirmacao');
-            if (!textoConfirmacao) {
-                textoConfirmacao = `Olá, {nome}! 🎉\n\nSua vaga na Sessão de Diagnóstico está confirmada!\n\n📅 Sábado às 14h\n\nEntre no grupo da sessão:\n👉 {grupo_link}\n\nAté sábado! 🌟\n— Suellen Seragi`;
-            }
-            const mensagem = textoConfirmacao
-                .replace(/\{nome\}/gi, nome)
-                .replace(/\{grupo_link\}/gi, grupoLink)
-                .replace(/\{data\}/gi, dataFormatada);
+                let textoConfirmacao = await getMensagemConfig('confirmacao');
+                if (!textoConfirmacao) {
+                    textoConfirmacao = `Olá, {nome}! 🎉\n\nSua vaga na Sessão de Diagnóstico está confirmada!\n\n📅 Sábado às 14h\n\nEntre no grupo da sessão:\n👉 {grupo_link}\n\nAté sábado! 🌟\n— Suellen Seragi`;
+                }
+                const mensagem = textoConfirmacao
+                    .replace(/\{nome\}/gi, nome)
+                    .replace(/\{grupo_link\}/gi, grupoLink)
+                    .replace(/\{data\}/gi, dataFormatada);
 
-            await enviarViaGateway(numeroFinal, mensagem, nome);
-            await registrarMensagem(sessaoId, 'sessoes_agendadas', 'confirmacao');
-            console.log(`✅ Confirmação enfileirada para ${nome}`);
-        } catch (err) {
-            console.error('❌ Erro confirmação WhatsApp:', err.message);
+                await enviarViaGateway(numeroFinal, mensagem, nome);
+                await registrarMensagem(sessaoId, 'sessoes_agendadas', 'confirmacao');
+                console.log(`✅ Confirmação enfileirada para ${nome}`);
+            } catch (err) {
+                console.error('❌ Erro confirmação WhatsApp:', err.message);
+            }
         }
 
-        // 4. Pushover
+        // 4. Pushover — SEMPRE (Renato precisa saber do agendamento)
         try {
             await axios.post('https://api.pushover.net/1/messages.json', {
                 token: 'axfum4x76e38hzuuxjrkb3sh2febbw',
                 user: process.env.PUSHOVER_USER_KEY,
                 title: '🗓️ Nova Sessão Confirmada!',
-                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 ${dataFormatada} às 14h\n📱 ${numeroFinal}`
+                message: `${nome} confirmou presença na Sessão de Diagnóstico\n📅 ${dataFormatada} às 14h\n📱 ${numeroFinal}${pausado ? '\n⏸️ Envios pausados — confirmação NÃO foi enviada' : ''}`
             });
         } catch (err) {
             console.error('❌ Erro Pushover:', err.message);
@@ -95,7 +106,8 @@ router.post('/agendar-sessao', async (req, res) => {
             success: true,
             nome,
             telefone: numeroFinal,
-            data: `${dataFormatada} às 14h`
+            data: `${dataFormatada} às 14h`,
+            envio_pausado: pausado
         });
 
     } catch (error) {
