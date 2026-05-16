@@ -79,6 +79,22 @@ async function initDb() {
             )
         `);
 
+        // Configurações gerais (chave/valor) — toggle de pausa etc
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                chave VARCHAR(80) PRIMARY KEY,
+                valor TEXT NOT NULL,
+                atualizado_em TIMESTAMP DEFAULT NOW()
+            )
+        `);
+
+        // Seed: toggle de pausa padrão = 'false' (envios ATIVOS por padrão)
+        await pool.query(
+            `INSERT INTO configuracoes (chave, valor)
+             VALUES ('envios_sessao_pausados', 'false')
+             ON CONFLICT (chave) DO NOTHING`
+        );
+
         // Seed das mensagens padrão
         const mensagensPadrao = [
             {
@@ -140,6 +156,38 @@ function proximoSabado() {
     const sabado = new Date(hoje);
     sabado.setDate(hoje.getDate() + diasParaSabado);
     return sabado.toISOString().split('T')[0];
+}
+
+// ── CONFIGURAÇÕES (chave/valor) ──
+
+async function getConfig(chave) {
+    try {
+        const result = await pool.query(`SELECT valor FROM configuracoes WHERE chave = $1`, [chave]);
+        return result.rows[0]?.valor ?? null;
+    } catch (error) {
+        console.error('❌ Erro ao buscar config:', error.message);
+        return null;
+    }
+}
+
+async function setConfig(chave, valor) {
+    try {
+        await pool.query(
+            `INSERT INTO configuracoes (chave, valor, atualizado_em)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (chave) DO UPDATE SET valor = $2, atualizado_em = NOW()`,
+            [chave, String(valor)]
+        );
+        console.log(`✅ Config '${chave}' = ${valor}`);
+    } catch (error) {
+        console.error('❌ Erro ao salvar config:', error.message);
+        throw error;
+    }
+}
+
+async function enviosSessaoPausados() {
+    const valor = await getConfig('envios_sessao_pausados');
+    return valor === 'true';
 }
 
 // ── MENSAGENS CONFIG ──
@@ -469,6 +517,10 @@ async function deletarPassado(id) {
 module.exports = {
     initDb,
     proximoSabado,
+    // configurações (chave/valor)
+    getConfig,
+    setConfig,
+    enviosSessaoPausados,
     // mensagens config
     getMensagemConfig,
     listarMensagensConfig,
