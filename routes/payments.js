@@ -11,6 +11,47 @@ const whatsappNotifier = new WhatsAppNotifier();
 const { agendarEnvio } = require('../db');
 
 // ============================================
+// INTEGRAÇÃO VIDA MÁGICA (ADITIVO — NÃO altera nada do fluxo/Mercado Pago)
+// Só para pagamentos VM (external_reference começa com "VM"): avisa o Vida
+// Mágica pra marcar o teste como pago e completar o cadastro (email/nome/cpf).
+// Fire-and-forget: qualquer erro é só logado, nunca quebra o webhook do MP.
+// ============================================
+const axios = require('axios');
+const VIDAMAGICA_MARCAR_PAGO_URL = process.env.VIDAMAGICA_MARCAR_PAGO_URL
+    || 'https://www.vidamagica.com.br/api/teste/marcar-pago';
+const VIDAMAGICA_WEBHOOK_TOKEN = process.env.VIDAMAGICA_WEBHOOK_TOKEN || '';
+
+async function notificarVidaMagica(paymentDetails) {
+    try {
+        const uid = paymentDetails && paymentDetails.external_reference;
+        if (!uid || !/^VM/i.test(uid)) return; // só pagamentos do Vida Mágica
+
+        const payer = paymentDetails.payer || {};
+        const addPayer = (paymentDetails.additional_info && paymentDetails.additional_info.payer) || {};
+
+        const nome = [
+            payer.first_name || addPayer.first_name,
+            payer.last_name  || addPayer.last_name
+        ].filter(Boolean).join(' ').trim();
+
+        const email = payer.email || (paymentDetails.metadata && paymentDetails.metadata.customer_email) || '';
+        const cpf = (payer.identification && payer.identification.number) || '';
+        const areaCode = (payer.phone && payer.phone.area_code) || (addPayer.phone && addPayer.phone.area_code) || '';
+        const phoneNum = (payer.phone && payer.phone.number) || (addPayer.phone && addPayer.phone.number) || '';
+        const telefone = `${areaCode}${phoneNum}`.replace(/\D/g, '');
+
+        const payload = { uid, email, nome, cpf, telefone };
+        const headers = { 'Content-Type': 'application/json' };
+        if (VIDAMAGICA_WEBHOOK_TOKEN) headers['x-webhook-token'] = VIDAMAGICA_WEBHOOK_TOKEN;
+
+        const resp = await axios.post(VIDAMAGICA_MARCAR_PAGO_URL, payload, { headers, timeout: 8000 });
+        console.log(`✅ [VIDA MÁGICA] marcar-pago OK uid=${uid}`, resp.data);
+    } catch (error) {
+        console.error('❌ [VIDA MÁGICA] falha ao notificar marcar-pago:', error.message);
+    }
+}
+
+// ============================================
 // LOCK EM MEMÓRIA — evita envio duplicado
 // O MP pode disparar payment.created E payment.updated
 // para o mesmo pagamento. O lock bloqueia o segundo.
@@ -384,6 +425,9 @@ router.post('/webhook', async (req, res) => {
                             console.error('❌ Erro Pushover PIX:', error);
                         }
 
+                        // ADITIVO — avisa o Vida Mágica (só pagamentos VM; marca pago + completa cadastro)
+                        await notificarVidaMagica(paymentDetails);
+
                         logPayment('PIX_APROVADO_WEBHOOK', data.id, 'SUCCESS', {
                             uid: uid,
                             transaction_amount: paymentDetails.transaction_amount,
@@ -398,6 +442,9 @@ router.post('/webhook', async (req, res) => {
                         transaction_amount: paymentDetails.transaction_amount,
                         installments: paymentDetails.installments
                     });
+
+                    // ADITIVO — avisa o Vida Mágica (só pagamentos VM; marca pago + completa cadastro)
+                    await notificarVidaMagica(paymentDetails);
                 }
 
             } catch (error) {
