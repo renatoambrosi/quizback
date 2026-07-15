@@ -22,17 +22,22 @@ class SimpleEmailSender {
 
             console.log(`📧 Enviando email PIX aprovado para: ${customerEmail}`);
 
+            // Origem pelo prefixo "VM": Teste do Subconsciente (Vida Mágica) vs Teste de Prosperidade (Tally).
+            const ehVM = /^VM/i.test(uid);
+
             const emailData = {
                 sender: {
-                    name: 'Suellen Seragi - Teste de Prosperidade',
+                    name: ehVM ? 'Suellen Seragi - Teste do Subconsciente' : 'Suellen Seragi - Teste de Prosperidade',
                     email: this.senderEmail
                 },
                 to: [{
                     email: customerEmail,
                     name: 'Cliente'
                 }],
-                subject: '🎉 Acesse seu Resultado do Teste de Prosperidade!',
-                htmlContent: this.createSuccessTemplate(uid, paymentAmount),
+                subject: ehVM
+                    ? '🎉 Acesse seu Resultado do Teste do Subconsciente!'
+                    : '🎉 Acesse seu Resultado do Teste de Prosperidade!',
+                htmlContent: this.createSuccessTemplate(uid, paymentAmount, ehVM),
                 tags: ['pix-aprovado', 'resultado-liberado']
             };
 
@@ -66,8 +71,13 @@ class SimpleEmailSender {
     // TEMPLATE SIMPLES DO EMAIL
     // ============================================
     
-    createSuccessTemplate(uid, amount) {
-        const resultUrl = `https://www.suellenseragi.com.br/resultado4?uid=${uid}`;
+    createSuccessTemplate(uid, amount, ehVM = false) {
+        // VM (Teste do Subconsciente) → resultado no Vida Mágica (uid sem "VM").
+        // Tally (Teste de Prosperidade) → resultado4 no suellenseragi — INALTERADO.
+        const produto = ehVM ? 'Teste do Subconsciente' : 'Teste de Prosperidade';
+        const resultUrl = ehVM
+            ? `https://www.vidamagica.com.br/resultado/${uid.replace(/^VM/i, '')}`
+            : `https://www.suellenseragi.com.br/resultado4?uid=${uid}`;
         
         return `
         <!DOCTYPE html>
@@ -75,7 +85,7 @@ class SimpleEmailSender {
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>PIX Aprovado - Teste de Prosperidade</title>
+            <title>PIX Aprovado - ${produto}</title>
             <style>
                 body { 
                     font-family: Arial, sans-serif; 
@@ -159,11 +169,11 @@ class SimpleEmailSender {
                     
                     <div class="amount">R$ ${amount}</div>
                     
-                    <p>Seu pagamento via PIX foi processado e confirmado. Agora você pode acessar seu resultado personalizado do <strong>Teste de Prosperidade</strong>.</p>
-                    
+                    <p>Seu pagamento via PIX foi processado e confirmado. Agora você pode acessar seu resultado personalizado do <strong>${produto}</strong>.</p>
+
                     <div class="highlight-box">
                         <h3>🎯 Seu resultado está pronto!</h3>
-                        <p>Clique no botão abaixo para descobrir seu resultado do Teste de Prosperidade.</p>
+                        <p>Clique no botão abaixo para descobrir seu resultado do ${produto}.</p>
                     </div>
                     
                     <a href="${resultUrl}" class="cta-button" style="color: white !important; text-decoration: none !important;">
@@ -177,8 +187,8 @@ class SimpleEmailSender {
                 </div>
                 
                 <div class="footer">
-                    <p><strong>Suellen Seragi - Teste de Prosperidade</strong></p>
-                    <p><strong>suellenseragi.com.br</strong></p>
+                    <p><strong>Suellen Seragi - ${produto}</strong></p>
+                    <p><strong>${ehVM ? 'vidamagica.com.br' : 'suellenseragi.com.br'}</strong></p>
                     <p>Este é um email automático de confirmação de pagamento</p>
                     <p>© 2026 - Todos os direitos reservados</p>
                 </div>

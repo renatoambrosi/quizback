@@ -48,12 +48,16 @@ class PushoverNotifier {
                 minute: '2-digit'
             });
 
-            const message = `💰 Venda aprovada!\nValor: ${amount}\n🕓 ${timestamp}\nID: ${paymentId || '—'}`;
+            // Origem pelo prefixo "VM" no external_reference.
+            const ehVM = /^VM/i.test(paymentDetails.external_reference || '');
+            const origem = ehVM ? 'Teste do Subconsciente' : 'Teste de Prosperidade';
+
+            const message = `💰 Venda aprovada!\n🎯 ${origem}\nValor: ${amount}\n🕓 ${timestamp}\nID: ${paymentId || '—'}`;
 
             const notificationData = {
                 token: this.appToken,
                 user: this.userKey,
-                title: 'Venda Aprovada!',
+                title: `Venda Aprovada — ${ehVM ? 'Subconsciente' : 'Prosperidade'}`,
                 message,
                 priority: 1,
                 sound: 'vendateste'

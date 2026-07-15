@@ -44,6 +44,17 @@ class WhatsAppNotifier {
     }
 
     async buscarCliente(uid) {
+        // VM (Teste do Subconsciente): contato vem do Vida Mágica — o número foi
+        // coletado no início do teste. Tally (Prosperidade): planilha do Google — INALTERADO.
+        if (/^VM/i.test(uid)) {
+            const testeId = uid.replace(/^VM/i, '');
+            const base = process.env.VIDAMAGICA_URL || 'https://www.vidamagica.com.br';
+            const headers = {};
+            if (process.env.VIDAMAGICA_WEBHOOK_TOKEN) headers['x-webhook-token'] = process.env.VIDAMAGICA_WEBHOOK_TOKEN;
+            const resp = await axios.get(`${base}/api/teste/cliente/${encodeURIComponent(testeId)}`, { headers, timeout: 8000 });
+            if (!resp.data || !resp.data.ok || !resp.data.telefone) return null;
+            return { nome: resp.data.nome, telefone: resp.data.telefone };
+        }
         const response = await axios.get(`${this.sheetUrl}?uid=${uid}`);
         if (!response.data.found) return null;
         return {
@@ -65,15 +76,24 @@ class WhatsAppNotifier {
             const numeroFinal = formatarTelefone(cliente.telefone);
             console.log(`📱 Número final: ${numeroFinal}`);
 
-            const mensagem =
-                `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n` +
-                `🔎O resultado do seu Teste de Prosperidade já está disponível!\n\n` +
-                `Está animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n` +
-                `👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado4?uid=${uid}`;
+            // Origem pelo prefixo "VM": Teste do Subconsciente (Vida Mágica) vs Teste de Prosperidade (Tally).
+            const ehVM = /^VM/i.test(uid);
+            const mensagem = ehVM
+                ? `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n` +
+                  `🔎O resultado do seu Teste do Subconsciente já está disponível!\n\n` +
+                  `Está animado(a) para descobrir o que ele revela sobre o seu momento e os próximos passos da sua jornada?\n\n` +
+                  `👉 Acesse seu resultado aqui:\nhttps://www.vidamagica.com.br/resultado/${uid.replace(/^VM/i, '')}`
+                : `Olá, ${cliente.nome}!🤩\n\n✨Tenho novidades...\n` +
+                  `🔎O resultado do seu Teste de Prosperidade já está disponível!\n\n` +
+                  `Está animado(a) para você ver o que ele revela sobre o seu momento atual e os próximos passos da sua jornada?\n\n` +
+                  `👉 Acesse seu resultado aqui:\nhttps://www.suellenseragi.com.br/resultado4?uid=${uid}`;
 
             // imediato = true — pessoa acabou de pagar, não pode esperar fila
             await enviarViaGateway(numeroFinal, mensagem, cliente.nome, true);
             console.log(`✅ Resultado enviado para ${cliente.nome} (${numeroFinal})`);
+
+            // VM (Subconsciente) não tem o funil de convite/agendamento do Prosperidade.
+            if (ehVM) return;
 
             // Registra lead com status aguardando_convite
             try {
