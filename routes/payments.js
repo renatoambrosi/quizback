@@ -92,7 +92,7 @@ const merchantOrder = new MerchantOrder(client);
 
 function createAdditionalInfo(paymentData, userUID) {
     const now = new Date().toISOString();
-    
+
     return {
         items: [
             {
@@ -144,19 +144,19 @@ function logPayment(action, paymentId, status, details = {}) {
 
 function validatePaymentData(paymentData) {
     const errors = [];
-    
+
     if (!paymentData.payer || !paymentData.payer.email) {
         errors.push('Email do pagador é obrigatório');
     }
-    
+
     if (!paymentData.transaction_amount || paymentData.transaction_amount <= 0) {
         errors.push('Valor da transação deve ser maior que zero');
     }
-    
+
     if (!paymentData.description || paymentData.description.trim() === '') {
         errors.push('Descrição do pagamento é obrigatória');
     }
-    
+
     return errors;
 }
 
@@ -179,7 +179,7 @@ router.post('/process_payment', async (req, res) => {
             });
         }
 
-        const { 
+        const {
             token,
             payment_method_id,
             transaction_amount,
@@ -317,7 +317,7 @@ router.post('/process_payment', async (req, res) => {
                 response.qr_code = pixResult.point_of_interaction.transaction_data.qr_code;
                 response.qr_code_base64 = pixResult.point_of_interaction.transaction_data.qr_code_base64;
                 response.ticket_url = pixResult.point_of_interaction.transaction_data.ticket_url;
-                
+
                 logPayment('PIX_QR_GERADO', pixResult.id, 'QR_READY', {
                     qr_code_length: response.qr_code?.length || 0,
                     has_base64: !!response.qr_code_base64,
@@ -371,7 +371,7 @@ router.post('/webhook', async (req, res) => {
         console.log('🔔 WEBHOOK OFICIAL MP RECEBIDO:', req.body);
         logPayment('WEBHOOK_RECEBIDO', req.body.data?.id || 'unknown', req.body.action, req.body);
 
-        res.status(200).json({ 
+        res.status(200).json({
             received: true,
             source: 'checkout_bricks_oficial',
             timestamp: new Date().toISOString()
@@ -382,7 +382,7 @@ router.post('/webhook', async (req, res) => {
         if ((action === 'payment.updated' || action === 'payment.created') && data && data.id) {
             try {
                 const paymentDetails = await payment.get({ id: data.id });
-                
+
                 logPayment('WEBHOOK_CONSULTADO', data.id, paymentDetails.status, {
                     status_detail: paymentDetails.status_detail,
                     external_reference: paymentDetails.external_reference,
@@ -392,22 +392,26 @@ router.post('/webhook', async (req, res) => {
                 if (paymentDetails.status === 'approved' && paymentDetails.payment_method_id === 'pix') {
                     const uid = paymentDetails.external_reference;
 
+                    // Teste do Subconsciente (uid "VM..."): quem manda o resultado
+                    // para a pessoa é o Vida Mágica. Aqui só segue o aviso de pago.
+                    const ehVidaMagica = /^VM/i.test(uid || '');
+
                     if (jaProcessou(uid)) {
                         console.log(`⚠️ UID ${uid} já processado nos últimos 5min — webhook duplicado ignorado`);
                     } else {
                         const customerEmail = paymentDetails.metadata?.customer_email;
-                        await emailSender.sendPixSuccessEmail(customerEmail, uid);
+                        if (!ehVidaMagica) await emailSender.sendPixSuccessEmail(customerEmail, uid);
 
                         // Notificação WhatsApp
                         try {
-                            await whatsappNotifier.enviarMensagemAprovacao(uid);
+                            if (!ehVidaMagica) await whatsappNotifier.enviarMensagemAprovacao(uid);
                         } catch (error) {
                             console.error('❌ Erro WhatsApp PIX:', error);
                         }
 
                         // Agendamento segundo WhatsApp (24h)
                         try {
-                            const cliente = await whatsappNotifier.buscarCliente(uid);
+                            const cliente = ehVidaMagica ? null : await whatsappNotifier.buscarCliente(uid);
                             if (cliente) {
                                 const numero = String(cliente.telefone).replace(/\D/g, '');
                                 const numeroFinal = numero.startsWith('55') ? numero : numero.startsWith('0') ? `55${numero.slice(1)}` : `55${numero}`;
@@ -475,9 +479,9 @@ router.post('/webhook', async (req, res) => {
         logPayment('WEBHOOK_ERRO_GERAL', 'error', 'FALHA', {
             message: error.message
         });
-        
+
         if (!res.headersSent) {
-            res.status(200).json({ 
+            res.status(200).json({
                 received: true,
                 error: 'Erro interno no webhook'
             });
@@ -493,14 +497,14 @@ router.get('/payment/:id', async (req, res) => {
     try {
         const paymentId = req.params.id;
         console.log(`🔍 CONSULTANDO PAGAMENTO OFICIAL: ${paymentId}`);
-        
+
         const paymentDetails = await payment.get({ id: paymentId });
-        
+
         logPayment('CONSULTA_POLLING', paymentId, paymentDetails.status, {
             status_detail: paymentDetails.status_detail,
             payment_method_id: paymentDetails.payment_method_id
         });
-        
+
         const response = {
             id: paymentDetails.id,
             status: paymentDetails.status,
@@ -527,7 +531,7 @@ router.get('/payment/:id', async (req, res) => {
         logPayment('CONSULTA_ERRO', req.params.id, 'ERRO', {
             message: error.message
         });
-        
+
         res.status(404).json({
             error: 'Pagamento não encontrado',
             message: 'Verifique o ID do pagamento',
@@ -543,7 +547,7 @@ router.get('/payment/:id', async (req, res) => {
 router.get('/callback', (req, res) => {
     console.log('🔄 CALLBACK OFICIAL RECEBIDO:', req.query);
     logPayment('CALLBACK', req.query.payment_id || 'unknown', 'CALLBACK', req.query);
-    
+
     if (req.query.external_reference) {
         res.redirect(`https://www.suellenseragi.com.br/resultado4?uid=${req.query.external_reference}`);
     } else {
