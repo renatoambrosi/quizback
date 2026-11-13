@@ -15,16 +15,95 @@ const { agendarEnvio } = require('../db');
 // Só para pagamentos VM (external_reference começa com "VM"): avisa o Vida
 // Mágica pra marcar o teste como pago e completar o cadastro (email/nome/cpf).
 // Fire-and-forget: qualquer erro é só logado, nunca quebra o webhook do MP.
+//
+// NOVAS TENTATIVAS (2026-11-12): se o Vida Mágica não responder OK, o aviso é
+// enviado de novo a cada 5 s no primeiro minuto e depois a cada 30 s, até
+// completar 10 minutos. Para na primeira resposta OK. O Vida Mágica aceita o
+// aviso repetido: marca pago de novo e manda o resultado uma vez só.
+// Recusa definitiva (token errado, teste não encontrado, uid inválido) não
+// tenta de novo. Cada tentativa, acerto e desistência sai no log.
 // ============================================
 const axios = require('axios');
 const VIDAMAGICA_MARCAR_PAGO_URL = process.env.VIDAMAGICA_MARCAR_PAGO_URL
     || 'https://www.vidamagica.com.br/api/teste/marcar-pago';
 const VIDAMAGICA_WEBHOOK_TOKEN = process.env.VIDAMAGICA_WEBHOOK_TOKEN || '';
 
-async function notificarVidaMagica(paymentDetails) {
+const AVISO_VM_TIMEOUT_MS      = 8000;            // espera de cada tentativa
+const AVISO_VM_INTERVALO_1_MS  = 5 * 1000;        // intervalo no primeiro minuto
+const AVISO_VM_FASE_1_ATE_MS   = 60 * 1000;       // até quando vale o intervalo curto
+const AVISO_VM_INTERVALO_2_MS  = 30 * 1000;       // intervalo depois do primeiro minuto
+const AVISO_VM_DESISTE_MS      = 10 * 60 * 1000;  // para de tentar depois de 10 minutos
+
+// uids com aviso ainda sendo tentado: o MP pode chamar o webhook duas vezes
+// para o mesmo pagamento, e não queremos duas sequências de tentativas.
+const avisosVmEmAndamento = new Set();
+
+// Uma tentativa do aviso. Nunca lança erro.
+// Devolve { ok, definitivo, motivo, dados }.
+async function enviarAvisoVidaMagica(payload, headers) {
     try {
-        const uid = paymentDetails && paymentDetails.external_reference;
+        const resp = await axios.post(VIDAMAGICA_MARCAR_PAGO_URL, payload, {
+            headers, timeout: AVISO_VM_TIMEOUT_MS
+        });
+        return { ok: true, definitivo: false, motivo: `HTTP ${resp.status}`, dados: resp.data };
+    } catch (error) {
+        const status = error.response && error.response.status;
+        // 4xx é recusa definitiva, menos 408 (demora), 425 (cedo demais) e 429 (limite).
+        const definitivo = !!status && status >= 400 && status < 500
+            && status !== 408 && status !== 425 && status !== 429;
+        const motivo = status ? `HTTP ${status}` : (error.code || error.message);
+        return { ok: false, definitivo, motivo, dados: error.response && error.response.data };
+    }
+}
+
+// Agenda a próxima tentativa (ou desiste, se passou do limite).
+function agendarNovaTentativaVm(uid, payload, headers, inicio, tentativa) {
+    const decorrido = Date.now() - inicio;
+    const espera = decorrido < AVISO_VM_FASE_1_ATE_MS ? AVISO_VM_INTERVALO_1_MS : AVISO_VM_INTERVALO_2_MS;
+
+    if (decorrido + espera > AVISO_VM_DESISTE_MS) {
+        avisosVmEmAndamento.delete(uid);
+        console.error(`🚨 [VIDA MÁGICA] DESISTI do aviso marcar-pago uid=${uid} depois de ${tentativa} tentativas em ${Math.round(decorrido / 1000)}s. A pessoa pagou e o Vida Mágica não foi avisado: liberar pelo admin.`);
+        return;
+    }
+
+    console.log(`⏳ [VIDA MÁGICA] nova tentativa do aviso marcar-pago uid=${uid} em ${espera / 1000}s (será a tentativa ${tentativa + 1})`);
+
+    const timer = setTimeout(async () => {
+        const n = tentativa + 1;
+        try {
+            const r = await enviarAvisoVidaMagica(payload, headers);
+            const seg = Math.round((Date.now() - inicio) / 1000);
+            if (r.ok) {
+                avisosVmEmAndamento.delete(uid);
+                console.log(`✅ [VIDA MÁGICA] marcar-pago OK uid=${uid} (tentativa ${n}, ${seg}s depois do pagamento)`, r.dados);
+                return;
+            }
+            if (r.definitivo) {
+                avisosVmEmAndamento.delete(uid);
+                console.error(`❌ [VIDA MÁGICA] falha ao notificar marcar-pago: ${r.motivo} uid=${uid} (tentativa ${n}). Recusa definitiva, não tento de novo.`, r.dados || '');
+                return;
+            }
+            console.error(`❌ [VIDA MÁGICA] falha ao notificar marcar-pago: ${r.motivo} uid=${uid} (tentativa ${n}, ${seg}s depois do pagamento)`);
+            agendarNovaTentativaVm(uid, payload, headers, inicio, n);
+        } catch (error) {
+            avisosVmEmAndamento.delete(uid);
+            console.error(`❌ [VIDA MÁGICA] erro inesperado nas novas tentativas uid=${uid}:`, error.message);
+        }
+    }, espera);
+    if (timer.unref) timer.unref(); // não segura o processo ligado na hora de reiniciar
+}
+
+async function notificarVidaMagica(paymentDetails) {
+    let uid = null;
+    try {
+        uid = paymentDetails && paymentDetails.external_reference;
         if (!uid || !/^VM/i.test(uid)) return; // só pagamentos do Vida Mágica
+
+        if (avisosVmEmAndamento.has(uid)) {
+            console.log(`ℹ️ [VIDA MÁGICA] aviso marcar-pago uid=${uid} já está sendo tentado — chamada repetida ignorada`);
+            return;
+        }
 
         const payer = paymentDetails.payer || {};
         const addPayer = (paymentDetails.additional_info && paymentDetails.additional_info.payer) || {};
@@ -44,9 +123,28 @@ async function notificarVidaMagica(paymentDetails) {
         const headers = { 'Content-Type': 'application/json' };
         if (VIDAMAGICA_WEBHOOK_TOKEN) headers['x-webhook-token'] = VIDAMAGICA_WEBHOOK_TOKEN;
 
-        const resp = await axios.post(VIDAMAGICA_MARCAR_PAGO_URL, payload, { headers, timeout: 8000 });
-        console.log(`✅ [VIDA MÁGICA] marcar-pago OK uid=${uid}`, resp.data);
+        // Primeira tentativa: na hora, como sempre foi.
+        avisosVmEmAndamento.add(uid);
+        const inicio = Date.now();
+        const r = await enviarAvisoVidaMagica(payload, headers);
+
+        if (r.ok) {
+            avisosVmEmAndamento.delete(uid);
+            console.log(`✅ [VIDA MÁGICA] marcar-pago OK uid=${uid}`, r.dados);
+            return;
+        }
+        if (r.definitivo) {
+            avisosVmEmAndamento.delete(uid);
+            console.error(`❌ [VIDA MÁGICA] falha ao notificar marcar-pago: ${r.motivo} uid=${uid} (tentativa 1). Recusa definitiva, não tento de novo.`, r.dados || '');
+            return;
+        }
+
+        // Falha passageira (limite, demora, fora do ar): segue tentando por trás,
+        // sem segurar o webhook do Mercado Pago.
+        console.error(`❌ [VIDA MÁGICA] falha ao notificar marcar-pago: ${r.motivo} uid=${uid} (tentativa 1)`);
+        agendarNovaTentativaVm(uid, payload, headers, inicio, 1);
     } catch (error) {
+        if (uid) avisosVmEmAndamento.delete(uid);
         console.error('❌ [VIDA MÁGICA] falha ao notificar marcar-pago:', error.message);
     }
 }
